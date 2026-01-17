@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 min-h-screen;
+  }
+}
+
+@layer utilities {
+  /* ChordPro specific styles */
+  .chordpro-container {
+    @apply overflow-x-auto;
+  }
+
+  .chord-sheet {
+    font-family: monospace;
+    line-height: 1.5;
+  }
+
+  .chord {
+    @apply text-red-600 font-bold;
+    font-family: monospace;
+  }
+
+  .lyrics {
+    font-family: monospace;
+  }
+
+  .paragraph.chorus {
+    @apply bg-blue-50 p-4 rounded;
+  }
+
+  .comment {
+    @apply text-green-600 italic;
+  }
+
+  .column {
+    display: inline-block;
+    position: relative;
+  }
+
+  .row {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  /* Hide chords when toggled off */
+  .hide-chords .chord {
+    @apply invisible;
+  }
+
+  /* PWA Install prompt animation */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+}

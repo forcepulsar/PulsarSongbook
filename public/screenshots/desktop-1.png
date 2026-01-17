@@ -1,0 +1,32 @@
+<svg width="1280" height="720" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1280" height="720" fill="#f9fafb"/>
+
+  <!-- Header -->
+  <rect width="1280" height="80" fill="#dc3545"/>
+  <text x="40" y="50" font-size="32" fill="white" font-weight="bold">🎸 Pulsar Songbook</text>
+
+  <!-- Content Area -->
+  <rect x="40" y="120" width="1200" height="560" fill="white" rx="8" stroke="#e5e7eb" stroke-width="2"/>
+
+  <!-- Title -->
+  <text x="80" y="180" font-size="28" fill="#111827" font-weight="bold">Song Library</text>
+  <text x="80" y="210" font-size="16" fill="#6b7280">Browse, search, and play your favorite songs</text>
+
+  <!-- Search bar -->
+  <rect x="80" y="240" width="600" height="48" fill="#f3f4f6" rx="8"/>
+  <text x="100" y="270" font-size="16" fill="#9ca3af">Search by title or artist...</text>
+
+  <!-- Song items -->
+  <rect x="80" y="320" width="1120" height="80" fill="#f9fafb" rx="4"/>
+  <text x="100" y="355" font-size="18" fill="#111827" font-weight="600">What's Up</text>
+  <text x="100" y="380" font-size="14" fill="#6b7280">4 Non Blondes</text>
+
+  <rect x="80" y="420" width="1120" height="80" fill="#f9fafb" rx="4"/>
+  <text x="100" y="455" font-size="18" fill="#111827" font-weight="600">Take On Me</text>
+  <text x="100" y="480" font-size="14" fill="#6b7280">a-ha</text>
+
+  <rect x="80" y="520" width="1120" height="80" fill="#f9fafb" rx="4"/>
+  <text x="100" y="555" font-size="18" fill="#111827" font-weight="600">Wonderwall</text>
+  <text x="100" y="580" font-size="14" fill="#6b7280">Oasis</text>
+</svg>
