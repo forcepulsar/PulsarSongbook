@@ -15,7 +15,7 @@ function transformSalesforceSong(sfSong: any): Song {
     language: sfSong.Language__c as 'English' | 'Spanish' | undefined,
     chordProContent: sfSong.ChordPro_Content__c || '',
     difficulty: sfSong.Difficulty__c as 'Easy' | 'Medium' | 'Hard' | undefined,
-    myLevel: sfSong.My_Level__c as 'Want to Learn' | 'Know basics' | 'Play Well' | undefined,
+    myLevel: sfSong.My_Level__c as 'Want to Learn' | 'Know basics' | 'Need refresher' | 'In Progress' | 'Play Well' | undefined,
     priority: sfSong.Priority__c,
     learningResource: sfSong.Learning_resource__c,
     editingNotes: sfSong.Editing_Notes__c,

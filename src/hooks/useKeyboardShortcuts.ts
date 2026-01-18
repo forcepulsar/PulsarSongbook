@@ -5,9 +5,14 @@ export interface KeyboardShortcuts {
   onToggleAutoScroll?: () => void;
   onIncreaseFontSize?: () => void;
   onDecreaseFontSize?: () => void;
+  onIncreaseScrollSpeed?: () => void;
+  onDecreaseScrollSpeed?: () => void;
   onToggleChords?: () => void;
   onRandomSong?: () => void;
   onFocusSearch?: () => void;
+  onOpenGoogle?: () => void;
+  onOpenYouTube?: () => void;
+  onOpenSpotify?: () => void;
 }
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = true): void {
@@ -53,6 +58,18 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
         shortcuts.onDecreaseFontSize();
       }
 
+      // ] - Increase scroll speed
+      if (key === ']' && shortcuts.onIncreaseScrollSpeed) {
+        event.preventDefault();
+        shortcuts.onIncreaseScrollSpeed();
+      }
+
+      // [ - Decrease scroll speed
+      if (key === '[' && shortcuts.onDecreaseScrollSpeed) {
+        event.preventDefault();
+        shortcuts.onDecreaseScrollSpeed();
+      }
+
       // C - Toggle chords visibility
       if (key === 'c' && shortcuts.onToggleChords) {
         event.preventDefault();
@@ -63,6 +80,24 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
       if (key === 'r' && shortcuts.onRandomSong) {
         event.preventDefault();
         shortcuts.onRandomSong();
+      }
+
+      // G - Open Google search
+      if (key === 'g' && shortcuts.onOpenGoogle) {
+        event.preventDefault();
+        shortcuts.onOpenGoogle();
+      }
+
+      // Y - Open YouTube search
+      if (key === 'y' && shortcuts.onOpenYouTube) {
+        event.preventDefault();
+        shortcuts.onOpenYouTube();
+      }
+
+      // S - Open Spotify search
+      if (key === 's' && shortcuts.onOpenSpotify) {
+        event.preventDefault();
+        shortcuts.onOpenSpotify();
       }
 
       // / - Focus search

@@ -3,8 +3,11 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { initializeDatabase } from './db/initialize';
 import SongList from './components/SongList';
 import SongDisplay from './components/SongDisplay';
+import SongEdit from './components/SongEdit';
+import DataExport from './components/DataExport';
 import OfflineIndicator from './components/OfflineIndicator';
 import InstallPrompt from './components/InstallPrompt';
+import GlobalSearch from './components/GlobalSearch';
 
 function App() {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -61,21 +64,22 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-red-600 text-white shadow-lg">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <Link to="/" className="text-2xl font-bold">
-                🎸 Pulsar Songbook
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center gap-4">
+              <Link to="/" className="text-xl md:text-2xl font-bold whitespace-nowrap">
+                🎸 Pulsar
               </Link>
-              <nav className="flex gap-4">
+              <GlobalSearch />
+              <nav className="flex gap-2">
                 <Link
                   to="/"
-                  className="px-4 py-2 rounded hover:bg-red-700 transition"
+                  className="px-3 py-2 rounded hover:bg-red-700 transition text-sm md:text-base"
                 >
                   Songs
                 </Link>
                 <Link
                   to="/settings"
-                  className="px-4 py-2 rounded hover:bg-red-700 transition"
+                  className="px-3 py-2 rounded hover:bg-red-700 transition text-sm md:text-base"
                 >
                   Settings
                 </Link>
@@ -89,15 +93,8 @@ function App() {
           <Routes>
             <Route path="/" element={<SongList />} />
             <Route path="/song/:id" element={<SongDisplay />} />
-            <Route
-              path="/settings"
-              element={
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-2xl font-bold mb-4">Settings</h2>
-                  <p className="text-gray-600">Settings coming soon...</p>
-                </div>
-              }
-            />
+            <Route path="/song/:id/edit" element={<SongEdit />} />
+            <Route path="/settings" element={<DataExport />} />
           </Routes>
         </main>
       </div>

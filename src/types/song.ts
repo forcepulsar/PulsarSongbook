@@ -5,7 +5,7 @@ export interface Song {
   language?: 'English' | 'Spanish';
   chordProContent: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard';
-  myLevel?: 'Want to Learn' | 'Know basics' | 'Play Well';
+  myLevel?: 'Want to Learn' | 'Know basics' | 'Need refresher' | 'In Progress' | 'Play Well';
   priority?: string;
   learningResource?: string;
   editingNotes?: string;
