@@ -4,6 +4,7 @@ This guide explains how to deploy the Pulsar Songbook PWA to Bluehost hosting.
 
 ## Table of Contents
 - [Quick Deployment Steps](#quick-deployment-steps)
+- [Legacy Version for iOS 12](#legacy-version-for-ios-12)
 - [Initial Setup (One-Time)](#initial-setup-one-time)
 - [Regular Updates](#regular-updates)
 - [Troubleshooting](#troubleshooting)
@@ -116,6 +117,142 @@ npm run build
    - PWA install prompt should appear
    - Install the app
    - Test offline mode (disconnect internet)
+
+---
+
+## Legacy Version for iOS 12
+
+The app includes a legacy version at `/legacy/` for devices running iOS 12.5.7 (Safari 12), which don't support modern JavaScript features like optional chaining.
+
+### What is the Legacy Version?
+
+- **Purpose:** Provides read-only song viewing for iOS 12.5.7 devices
+- **Location:** `https://yourdomain.com/legacy/`
+- **Features:** Song list, search, song display, auto-scroll, font controls
+- **Not included:** Editing, exporting, filters, PWA installation
+- **Technology:** Vanilla JavaScript with ES5 syntax (no React, no modern libraries)
+- **Auto-redirect:** iOS 12 devices automatically redirect from `/` to `/legacy/`
+
+### Legacy Version File Structure
+
+The legacy version is built with the main app and located in `dist/legacy/`:
+
+```
+dist/
+├── index.html              (Modern app)
+├── assets/                 (Modern app bundles)
+└── legacy/                 (Legacy version for iOS 12)
+    ├── index.html          (ES5-compatible shell)
+    ├── app.js              (Vanilla JavaScript, ~20KB)
+    └── styles.css          (Plain CSS, ~7KB)
+
+Note: Both apps share the same IndexedDB database for songs
+```
+
+### Deploying the Legacy Version
+
+**The legacy version is automatically included in the standard build and deployment process.**
+
+When you run `npm run build`, both versions are built:
+- Main app → `dist/`
+- Legacy app → `dist/legacy/`
+
+When you upload to Bluehost, upload the entire `dist/` folder contents including the `legacy/` subdirectory.
+
+### Shared Data Between Main and Legacy Apps
+
+**Important:** Both the main app and legacy version share the same IndexedDB database (`PulsarSongbook`). This means:
+
+- ✅ **No data duplication** - Both apps read from the same source
+- ✅ **Automatic sync** - Changes in main app immediately available to legacy app
+- ✅ **No manual export needed** - Songs added/edited in main app appear in legacy version
+- ✅ **Works offline** - IndexedDB persists data locally
+
+**How it works:**
+1. Use the main app to add/edit/import songs
+2. Songs are stored in IndexedDB
+3. Open legacy version (`/legacy/`) to view the same songs
+4. No export or data copying required
+
+**First-time setup:**
+- Open the main app first to initialize the database
+- Import your songs using the main app's import feature
+- Then access legacy version - it will read from the same database
+
+### Testing the Legacy Version
+
+**On Modern Browsers:**
+1. Visit `https://yourdomain.com/legacy/` directly
+2. Verify song list loads
+3. Test search and song display
+
+**On iOS 12.5.7 (or simulator):**
+1. Visit `https://yourdomain.com/`
+2. Should auto-redirect to `/legacy/`
+3. Verify no JavaScript errors in console
+4. Test all features:
+   - Song list displays
+   - Search works
+   - Songs open and display correctly
+   - Auto-scroll works (Space key)
+   - Font controls work (+/- buttons)
+
+### Legacy Version Features
+
+**Available:**
+- ✅ Song list with artist/title
+- ✅ Search by title/artist
+- ✅ Song display with ChordPro rendering
+- ✅ Auto-scroll (Space key to start/stop)
+- ✅ Scroll speed controls ([ and ] keys)
+- ✅ Font size controls (+/- keys or buttons)
+- ✅ Back navigation
+
+**Not Available:**
+- ❌ Editing songs
+- ❌ Exporting data
+- ❌ Filters (language, difficulty, etc.)
+- ❌ Random song
+- ❌ External links (Google, YouTube, Spotify)
+- ❌ PWA installation
+- ❌ Offline mode
+
+### Browser Compatibility
+
+**Main App Requires:**
+- Safari 13.1+ (iOS 13.4+, macOS Catalina 10.15.4+)
+- Chrome 80+
+- Firefox 72+
+- Edge 80+
+
+**Legacy App Supports:**
+- Safari 12+ (iOS 12.5.7+)
+- All browsers that support ES5 (2009+)
+
+### Troubleshooting Legacy Version
+
+**Issue: Legacy version shows "No songs found in database"**
+
+**Solution:**
+1. Open the main app first to initialize IndexedDB
+2. Import songs using the main app's import feature
+3. Verify IndexedDB is enabled in browser settings
+4. Check browser console for errors
+5. Try clearing browser data and re-importing songs
+
+**Issue: iOS 12 not redirecting to legacy**
+
+**Solution:**
+1. Check that modern app's `index.html` includes redirect script
+2. Verify iOS version detection in browser console
+3. Test redirect manually by visiting `/legacy/` directly
+
+**Issue: ChordPro not rendering correctly**
+
+**Solution:**
+1. Verify ChordPro syntax in songs.json
+2. Check for special characters that need escaping
+3. Test in modern app first to verify ChordPro is valid
 
 ---
 
@@ -385,8 +522,12 @@ public_html/
 │   ├── index-[hash].css
 │   ├── index.es-[hash].js
 │   └── ...
-└── icons/                    (from dist/)
-    └── icon.svg
+├── icons/                    (from dist/)
+│   └── icon.svg
+└── legacy/                   (from dist/legacy/ - iOS 12 support)
+    ├── index.html            (ES5-compatible shell)
+    ├── app.js                (Vanilla JavaScript - reads from IndexedDB)
+    └── styles.css            (Plain CSS)
 ```
 
 **Important:**

@@ -1,10 +1,28 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import type { Connect } from 'vite'
+
+// Custom plugin to serve legacy folder correctly
+function legacyFolderPlugin() {
+  return {
+    name: 'legacy-folder-plugin',
+    configureServer(server: any) {
+      server.middlewares.use((req: Connect.IncomingMessage, _res: any, next: () => void) => {
+        // Redirect /legacy/ to /legacy/index.html
+        if (req.url === '/legacy' || req.url === '/legacy/') {
+          req.url = '/legacy/index.html'
+        }
+        next()
+      })
+    }
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    legacyFolderPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

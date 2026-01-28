@@ -1,0 +1,410 @@
+/**
+ * Pulsar Songbook - Legacy Styles
+ * Mobile-first responsive design for iOS 12.5.7
+ */
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  overflow-x: hidden;
+  touch-action: manipulation;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* =============================================================================
+   HEADER
+   ============================================================================= */
+
+#header {
+  flex-shrink: 0;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.header-content {
+  padding: 12px 16px;
+}
+
+.app-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f8f8f8;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: #007aff;
+  background: #fff;
+}
+
+/* Song header */
+.song-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 16px;
+  color: #007aff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.back-btn:active {
+  background: #e8f4fd;
+}
+
+.song-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-title-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-artist-header {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =============================================================================
+   MAIN CONTENT
+   ============================================================================= */
+
+#main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =============================================================================
+   SONG LIST
+   ============================================================================= */
+
+.song-list {
+  background: #fff;
+}
+
+.song-item {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.song-item:active {
+  background: #f8f8f8;
+}
+
+.song-item:last-child {
+  border-bottom: none;
+}
+
+.song-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.song-artist {
+  font-size: 14px;
+  color: #666;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+}
+
+/* =============================================================================
+   SONG VIEW
+   ============================================================================= */
+
+.song-container {
+  padding: 20px 16px;
+  background: #fff;
+  min-height: 100%;
+}
+
+.chord-sheet {
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.6;
+  color: #333;
+}
+
+.row {
+  display: block;
+  margin-bottom: 0.3em;
+  white-space: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.row.empty-row {
+  height: 1em;
+}
+
+.column {
+  display: inline-block;
+  position: relative;
+  vertical-align: top;
+}
+
+.chord {
+  display: block;
+  color: #dc3545;
+  font-weight: bold;
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: pre;
+  text-align: center;
+  line-height: 1;
+}
+
+.lyrics {
+  display: block;
+  white-space: pre;
+  position: relative;
+  line-height: 1.4;
+}
+
+.comment {
+  display: block;
+  color: #28a745;
+  font-style: italic;
+  margin: 0.5em 0;
+  width: 100%;
+}
+
+/* =============================================================================
+   CONTROLS
+   ============================================================================= */
+
+#controls {
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.controls-content {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.song-count {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+.song-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.control-btn {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: #007aff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.control-btn:active {
+  background: #0051d5;
+}
+
+.control-info {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* =============================================================================
+   ERROR STATE
+   ============================================================================= */
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 20px;
+  text-align: center;
+}
+
+.error-container h2 {
+  font-size: 20px;
+  color: #dc3545;
+  margin-bottom: 12px;
+}
+
+.error-container p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* =============================================================================
+   LOADING STATE
+   ============================================================================= */
+
+#loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 18px;
+  color: #666;
+}
+
+/* =============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================= */
+
+@media (min-width: 768px) {
+  .header-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px 20px;
+  }
+
+  .app-title {
+    font-size: 28px;
+  }
+
+  .song-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .controls-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .song-list {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+}
+
+/* =============================================================================
+   iOS SPECIFIC FIXES
+   ============================================================================= */
+
+/* Prevent pull-to-refresh */
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Safe area insets for notch devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  #header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  #controls {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Disable text selection on buttons and controls */
+button,
+.song-item,
+.control-btn,
+.back-btn {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
+@media print {
+  #header,
+  #controls {
+    display: none;
+  }
+
+  .song-container {
+    padding: 0;
+  }
+
+  .chord {
+    color: #000 !important;
+  }
+}
