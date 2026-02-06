@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { AuthProvider } from './contexts/AuthContext'
 
 // =============================================================================
 // iOS 12 Detection & Redirect to Legacy Version
@@ -28,17 +29,6 @@ function detectAndRedirectIOS12() {
         return true; // Stop execution
       }
     }
-  }
-
-  // Also check for optional chaining support as a fallback detection method
-  // Safari 12 doesn't support optional chaining
-  try {
-    // This will throw a syntax error in Safari 12
-    eval('null?.test');
-  } catch (e) {
-    console.log('[Compatibility] Optional chaining not supported, redirecting to legacy version');
-    window.location.href = '/legacy/';
-    return true;
   }
 
   return false;
@@ -72,6 +62,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </StrictMode>,
 )

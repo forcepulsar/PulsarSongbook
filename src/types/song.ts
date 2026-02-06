@@ -13,6 +13,7 @@ export interface Song {
   createdAt: Date;
   updatedAt: Date;
   syncStatus?: 'synced' | 'pending' | 'conflict';
+  createdBy?: string; // Firebase user ID
 }
 
 export interface AppSettings {

@@ -67,18 +67,3 @@ export async function importSongsFromFile(file: File): Promise<number> {
 export async function clearAllSongs(): Promise<void> {
   await db.songs.clear();
 }
-
-/**
- * Get total song count
- */
-export async function getSongCount(): Promise<number> {
-  return await db.songs.count();
-}
-
-/**
- * Check if database has been initialized with songs
- */
-export async function isDatabaseInitialized(): Promise<boolean> {
-  const count = await getSongCount();
-  return count > 0;
-}

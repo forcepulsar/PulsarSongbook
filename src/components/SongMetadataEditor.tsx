@@ -8,12 +8,14 @@ interface SongMetadataEditorProps {
 
 export default function SongMetadataEditor({ metadata, onChange }: SongMetadataEditorProps) {
   const handleChange = (field: keyof Song, value: string | undefined) => {
-    onChange({ [field]: value || undefined });
+    // Pass the value as-is (including empty strings)
+    // The firestore service will convert empty strings to null for optional fields
+    onChange({ [field]: value });
   };
 
   // Valid values for dropdowns
   const validMyLevels = ['Want to Learn', 'Know basics', 'Need refresher', 'In Progress', 'Play Well'];
-  const validDifficulties = ['Easy', 'Medium', 'Hard'];
+  const validDifficulties = ['Easy', 'Medium', 'Hard', 'Very Hard'];
   const validStatuses = ['To Do', 'In Progress', 'Done'];
 
   // Normalize values - if invalid, use empty string
@@ -81,16 +83,20 @@ export default function SongMetadataEditor({ metadata, onChange }: SongMetadataE
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Difficulty
+            {metadata.difficulty && !validDifficulties.includes(metadata.difficulty) && (
+              <span className="ml-2 text-xs text-orange-600">(Invalid value: "{metadata.difficulty}" - please select a new value)</span>
+            )}
           </label>
           <select
             value={normalizedDifficulty}
-            onChange={(e) => handleChange('difficulty', e.target.value as 'Easy' | 'Medium' | 'Hard' || undefined)}
+            onChange={(e) => handleChange('difficulty', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
           >
             <option value="">Select difficulty</option>
             <option value="Easy">Easy</option>
             <option value="Medium">Medium</option>
             <option value="Hard">Hard</option>
+            <option value="Very Hard">Very Hard</option>
           </select>
         </div>
 

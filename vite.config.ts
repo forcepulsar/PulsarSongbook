@@ -21,12 +21,15 @@ function legacyFolderPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: 5175, // Use a different port to avoid conflicts
+  },
   plugins: [
     legacyFolderPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'song__c.json'],
+      includeAssets: ['favicon.ico', 'robots.txt'],
       manifest: {
         id: '/',
         name: 'Pulsar Songbook',
@@ -48,6 +51,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (Firebase bundle is ~2.2 MB)
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

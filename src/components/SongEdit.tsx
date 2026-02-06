@@ -1,11 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 import { githubLight } from '@uiw/codemirror-theme-github';
-import { db, updateSong, getSettings } from '../db/schema';
+import { getSettings } from '../db/schema';
+import { getSong, updateSong } from '../services/firestore';
 import { parseAndFormatChordPro, applyAllStyles } from '../lib/chordpro/renderUtils';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { debounce } from '../lib/utils/debounce';
@@ -19,12 +19,8 @@ export default function SongEdit() {
 
   const isOnline = useOnlineStatus();
 
-  // Load song from IndexedDB
-  const song = useLiveQuery(async () => {
-    if (!id) return null;
-    return await db.songs.get(id);
-  }, [id]);
-
+  const [song, setSong] = useState<Song | null>(null);
+  const [loading, setLoading] = useState(true);
   const [editorContent, setEditorContent] = useState('');
   const [metadata, setMetadata] = useState<Partial<Song>>({
     title: '',
@@ -41,23 +37,31 @@ export default function SongEdit() {
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState({ fontSize: 16, showChords: true });
 
-  // Initialize editor content and metadata when song loads
+  // Load song from Firestore
   useEffect(() => {
-    if (!song) return;
+    if (!id) return;
 
-    setEditorContent(song.chordProContent);
-    setMetadata({
-      title: song.title,
-      artist: song.artist,
-      language: song.language,
-      difficulty: song.difficulty,
-      myLevel: song.myLevel,
-      priority: song.priority,
-      chordProStatus: song.chordProStatus,
-      editingNotes: song.editingNotes,
-      learningResource: song.learningResource
-    });
-  }, [song]);
+    getSong(id)
+      .then((loadedSong) => {
+        setSong(loadedSong);
+        if (loadedSong) {
+          setEditorContent(loadedSong.chordProContent);
+          setMetadata({
+            title: loadedSong.title,
+            artist: loadedSong.artist,
+            language: loadedSong.language,
+            difficulty: loadedSong.difficulty,
+            myLevel: loadedSong.myLevel,
+            priority: loadedSong.priority,
+            chordProStatus: loadedSong.chordProStatus,
+            editingNotes: loadedSong.editingNotes,
+            learningResource: loadedSong.learningResource
+          });
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [id]);
 
   // Load settings
   useEffect(() => {
@@ -108,7 +112,15 @@ export default function SongEdit() {
     try {
       await updateSong(id, {
         chordProContent: editorContent,
-        ...metadata
+        title: metadata.title || '',
+        artist: metadata.artist,
+        language: metadata.language,
+        difficulty: metadata.difficulty,
+        myLevel: metadata.myLevel,
+        priority: metadata.priority,
+        learningResource: metadata.learningResource,
+        editingNotes: metadata.editingNotes,
+        chordProStatus: metadata.chordProStatus
       });
 
       setHasUnsavedChanges(false);
@@ -147,6 +159,16 @@ export default function SongEdit() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <p className="text-gray-600 text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!song) {
     return (
@@ -220,7 +242,7 @@ export default function SongEdit() {
             <h3 className="text-lg font-semibold mb-4 text-gray-800">ChordPro Editor</h3>
             <CodeMirror
               value={editorContent}
-              height="600px"
+              height="calc(100vh - 400px)"
               extensions={[markdown(), EditorView.lineWrapping]}
               onChange={handleEditorChange}
               editable={isOnline}
@@ -259,7 +281,7 @@ export default function SongEdit() {
             <div
               ref={previewRef}
               className="overflow-auto bg-gray-50 p-4 border border-gray-200 rounded-lg chordpro-container"
-              style={{ height: '600px' }}
+              style={{ height: 'calc(100vh - 400px)' }}
             />
           </div>
         </div>

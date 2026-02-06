@@ -1,12 +1,15 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
-import { db, getSettings, updateSettings } from '../db/schema';
+import { getSettings, updateSettings } from '../db/schema';
+import { getSong } from '../services/firestore';
+import { useAuth } from '../contexts/AuthContext';
 import { parseAndFormatChordPro, applyAllStyles } from '../lib/chordpro/renderUtils';
 import { FONT, SCROLL } from '../lib/chordpro/constants';
 import { useAutoScroll } from '../hooks/useAutoScroll';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useFullscreen } from '../hooks/useFullscreen';
+import { linkify } from '../lib/utils/linkify';
+import type { Song } from '../types/song';
 
 export default function SongDisplay() {
   const { id } = useParams<{ id: string }>();
@@ -17,11 +20,18 @@ export default function SongDisplay() {
 
   const [fontSize, setFontSize] = useState(FONT.DEFAULT_SIZE);
   const [showChords, setShowChords] = useState(true);
+  const [song, setSong] = useState<Song | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { isApproved } = useAuth();
 
-  // Load song from IndexedDB
-  const song = useLiveQuery(async () => {
-    if (!id) return null;
-    return await db.songs.get(id);
+  // Load song from Firestore
+  useEffect(() => {
+    if (!id) return;
+
+    getSong(id)
+      .then(setSong)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [id]);
 
   // Initialize hooks
@@ -111,11 +121,27 @@ export default function SongDisplay() {
 
   // Random song handler
   const handleRandomSong = async () => {
-    const allSongs = await db.songs.toArray();
-    if (allSongs.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * allSongs.length);
-    const randomSong = allSongs[randomIndex];
-    navigate(`/song/${randomSong.id}`);
+    try {
+      const { getAllSongs } = await import('../services/firestore');
+      const allSongs = await getAllSongs();
+
+      if (allSongs.length === 0) return;
+
+      // Filter out current song
+      const otherSongs = allSongs.filter(s => s.id !== id);
+
+      if (otherSongs.length === 0) {
+        alert('This is the only song in the library!');
+        return;
+      }
+
+      const randomIndex = Math.floor(Math.random() * otherSongs.length);
+      const randomSong = otherSongs[randomIndex];
+      navigate(`/song/${randomSong.id}`);
+    } catch (error) {
+      console.error('Error loading random song:', error);
+      alert('Failed to load random song');
+    }
   };
 
   // Quick access handlers
@@ -137,6 +163,16 @@ export default function SongDisplay() {
     onOpenYouTube: handleOpenYouTube,
     onOpenSpotify: handleOpenSpotify,
   });
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <p className="text-gray-600 text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!song) {
     return (
@@ -209,13 +245,15 @@ export default function SongDisplay() {
             </div>
           </div>
           <div className="flex gap-1 flex-shrink-0">
-            <Link
-              to={`/song/${id}/edit`}
-              className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-              title="Edit"
-            >
-              ✏️
-            </Link>
+            {isApproved && (
+              <Link
+                to={`/song/${id}/edit`}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                title="Edit"
+              >
+                ✏️
+              </Link>
+            )}
             <button
               onClick={handleRandomSong}
               className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
@@ -261,7 +299,7 @@ export default function SongDisplay() {
         </div>
 
         {/* Controls - Compact */}
-        <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
+        <div className={`flex flex-wrap gap-2 pt-3 border-t border-gray-200 ${isFullscreen ? 'justify-center' : ''}`}>
           {/* Auto-scroll controls */}
           <button
             onClick={toggleScroll}
@@ -361,10 +399,10 @@ export default function SongDisplay() {
       <div
         ref={scrollContainerRef}
         className={`bg-white rounded-lg shadow-lg p-8 ${
-          isFullscreen ? 'h-screen overflow-y-auto' : 'max-h-[70vh] overflow-y-auto'
+          isFullscreen ? 'h-screen overflow-y-auto flex items-start justify-center' : 'max-h-[70vh] overflow-y-auto'
         }`}
       >
-        <div ref={contentRef} className="chordpro-container" />
+        <div ref={contentRef} className={`chordpro-container ${isFullscreen ? 'max-w-4xl w-full' : ''}`} />
       </div>
 
       {/* Learning Resources */}
@@ -373,7 +411,7 @@ export default function SongDisplay() {
           <h3 className="text-lg font-semibold text-gray-800 mb-2">
             Learning Resources
           </h3>
-          <div dangerouslySetInnerHTML={{ __html: song.learningResource }} />
+          <div dangerouslySetInnerHTML={{ __html: linkify(song.learningResource) }} />
         </div>
       )}
 
