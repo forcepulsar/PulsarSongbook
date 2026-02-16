@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { FaGoogle, FaYoutube, FaSpotify } from 'react-icons/fa';
 import { getSettings, updateSettings } from '../db/schema';
 import { getSong } from '../services/firestore';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +23,7 @@ export default function SongDisplay() {
   const [showChords, setShowChords] = useState(true);
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const { isApproved } = useAuth();
 
   // Load song from Firestore
@@ -50,10 +52,7 @@ export default function SongDisplay() {
 
   // Scroll to top when song changes
   useEffect(() => {
-    // Scroll page to top
     window.scrollTo(0, 0);
-
-    // Scroll song content container to top
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = 0;
     }
@@ -68,7 +67,7 @@ export default function SongDisplay() {
     });
   }, [setScrollSpeed]);
 
-  // Render and style the ChordPro content whenever song or settings change
+  // Render and style the ChordPro content
   useEffect(() => {
     if (!song || !song.chordProContent || !contentRef.current) return;
 
@@ -80,9 +79,9 @@ export default function SongDisplay() {
       console.error('[SongDisplay] Failed to render ChordPro:', error);
       if (contentRef.current) {
         contentRef.current.innerHTML = `
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p class="text-red-800">Failed to parse song content</p>
-            <pre class="mt-2 text-sm text-gray-700 whitespace-pre-wrap">${song.chordProContent}</pre>
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <p class="text-red-800 dark:text-red-200 font-medium">Failed to parse song content</p>
+            <pre class="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">${song.chordProContent}</pre>
           </div>
         `;
       }
@@ -127,7 +126,6 @@ export default function SongDisplay() {
 
       if (allSongs.length === 0) return;
 
-      // Filter out current song
       const otherSongs = allSongs.filter(s => s.id !== id);
 
       if (otherSongs.length === 0) {
@@ -166,9 +164,10 @@ export default function SongDisplay() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 text-lg">Loading...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -176,14 +175,14 @@ export default function SongDisplay() {
 
   if (!song) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 text-lg">Song not found</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <p className="text-xl text-gray-600 dark:text-gray-400">Song not found</p>
           <Link
             to="/"
-            className="inline-block mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            className="inline-block px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
           >
-            Back to Songs
+            Back to Library
           </Link>
         </div>
       </div>
@@ -197,58 +196,60 @@ export default function SongDisplay() {
   const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}`;
 
   return (
-    <div ref={pageRef} className="max-w-4xl mx-auto">
-      {/* Song Header - Compact for Mobile */}
-      <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
-        {/* Title and Actions */}
-        <div className="flex items-start justify-between gap-3 mb-3">
+    <div ref={pageRef} className="max-w-6xl mx-auto">
+      {/* Compact Header - Song Info & Actions */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          {/* Song Title & Artist - Compact */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 truncate">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
               {song.title}
               {song.artist && (
-                <span className="text-gray-600 font-normal"> - {song.artist}</span>
+                <span className="text-base md:text-lg text-gray-600 dark:text-gray-400 font-normal ml-2">
+                  - {song.artist}
+                </span>
               )}
             </h1>
-
-            {/* Quick Access Links */}
-            <div className="flex gap-2 mt-2">
-              <a
-                href={googleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition flex items-center gap-1"
-                title="Search on Google"
-              >
-                <span>🔍</span>
-                <span className="hidden sm:inline">Google</span>
-              </a>
-              <a
-                href={youtubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded transition flex items-center gap-1"
-                title="Search on YouTube"
-              >
-                <span>▶️</span>
-                <span className="hidden sm:inline">YouTube</span>
-              </a>
-              <a
-                href={spotifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded transition flex items-center gap-1"
-                title="Search on Spotify"
-              >
-                <span>🎵</span>
-                <span className="hidden sm:inline">Spotify</span>
-              </a>
-            </div>
           </div>
-          <div className="flex gap-1 flex-shrink-0">
+
+          {/* Quick Actions - Compact */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* External Links */}
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+              title="Search on Google (G)"
+            >
+              <FaGoogle className="text-lg text-[#4285F4]" />
+            </a>
+            <a
+              href={youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+              title="Search on YouTube (Y)"
+            >
+              <FaYoutube className="text-lg text-[#FF0000] dark:text-red-400" />
+            </a>
+            <a
+              href={spotifyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+              title="Search on Spotify (S)"
+            >
+              <FaSpotify className="text-lg text-[#1DB954] dark:text-green-400" />
+            </a>
+
+            <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
+
+            {/* Action Buttons */}
             {isApproved && (
               <Link
                 to={`/song/${id}/edit`}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                 title="Edit"
               >
                 ✏️
@@ -256,172 +257,195 @@ export default function SongDisplay() {
             )}
             <button
               onClick={handleRandomSong}
-              className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+              className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
               title="Random Song (R)"
             >
               🎲
             </button>
             <button
               onClick={() => navigate(-1)}
-              className="px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 transition text-sm"
+              className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm font-medium"
               title="Back"
             >
               ←
             </button>
           </div>
         </div>
-
-        {/* Song Metadata - Compact */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {song.difficulty && (
-            <span
-              className={`px-2 py-0.5 text-xs rounded ${
-                song.difficulty === 'Easy'
-                  ? 'bg-green-100 text-green-800'
-                  : song.difficulty === 'Medium'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {song.difficulty}
-            </span>
-          )}
-          {song.myLevel && (
-            <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">
-              {song.myLevel}
-            </span>
-          )}
-          {song.chordProStatus && (
-            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-800 rounded">
-              {song.chordProStatus}
-            </span>
-          )}
-        </div>
-
-        {/* Controls - Compact */}
-        <div className={`flex flex-wrap gap-2 pt-3 border-t border-gray-200 ${isFullscreen ? 'justify-center' : ''}`}>
-          {/* Auto-scroll controls */}
-          <button
-            onClick={toggleScroll}
-            className={`px-3 py-1.5 rounded transition text-xs font-medium ${
-              isScrolling
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {isScrolling ? '⏸' : '▶'}
-          </button>
-
-          {/* Scroll speed controls */}
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded">
-            <button
-              onClick={decreaseSpeed}
-              className="px-2 py-1.5 hover:bg-gray-200 rounded-l transition text-xs"
-              disabled={scrollSpeed <= SCROLL.MIN_SPEED}
-            >
-              🐢
-            </button>
-            <span className="px-1.5 text-xs text-gray-600">{scrollSpeed.toFixed(1)}x</span>
-            <button
-              onClick={increaseSpeed}
-              className="px-2 py-1.5 hover:bg-gray-200 rounded-r transition text-xs"
-              disabled={scrollSpeed >= SCROLL.MAX_SPEED}
-            >
-              🐇
-            </button>
-          </div>
-
-          {/* Font size controls */}
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded">
-            <button
-              onClick={decreaseFontSize}
-              className="px-2 py-1.5 hover:bg-gray-200 rounded-l transition text-xs"
-              disabled={fontSize <= FONT.MIN_SIZE}
-            >
-              A-
-            </button>
-            <span className="px-1.5 text-xs text-gray-600">{fontSize}</span>
-            <button
-              onClick={increaseFontSize}
-              className="px-2 py-1.5 hover:bg-gray-200 rounded-r transition text-xs"
-              disabled={fontSize >= FONT.MAX_SIZE}
-            >
-              A+
-            </button>
-          </div>
-
-          {/* Toggle chords */}
-          <button
-            onClick={toggleChords}
-            className={`px-3 py-1.5 rounded transition text-xs ${
-              showChords ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-            }`}
-          >
-            {showChords ? '👁' : '👁‍🗨'}
-          </button>
-
-          {/* Fullscreen toggle */}
-          <button
-            onClick={toggleFullscreen}
-            className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition text-xs"
-          >
-            {isFullscreen ? '⛶' : '⛶'}
-          </button>
-
-          {/* Keyboard shortcuts tooltip */}
-          <div className="relative group">
-            <button
-              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition text-xs"
-              title="Keyboard Shortcuts"
-            >
-              ⌨️
-            </button>
-            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap z-10">
-              <div className="space-y-1">
-                <div><strong>Space</strong> - Toggle auto-scroll</div>
-                <div><strong>[ / ]</strong> - Scroll speed</div>
-                <div><strong>+ / -</strong> - Font size</div>
-                <div><strong>C</strong> - Toggle chords</div>
-                <div><strong>F</strong> - Toggle fullscreen</div>
-                <div><strong>R</strong> - Random song</div>
-                <div><strong>G</strong> - Google search</div>
-                <div><strong>Y</strong> - YouTube search</div>
-                <div><strong>S</strong> - Spotify search</div>
-                <div><strong>Esc</strong> - Exit fullscreen</div>
-              </div>
-              <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Song Content */}
+      {/* Song Content with bottom padding for controls */}
       <div
         ref={scrollContainerRef}
-        className={`bg-white rounded-lg shadow-lg p-8 ${
-          isFullscreen ? 'h-screen overflow-y-auto flex items-start justify-center' : 'max-h-[70vh] overflow-y-auto'
-        }`}
+        className={`
+          bg-white dark:bg-gray-900 rounded-lg shadow-lg
+          ${isFullscreen
+            ? 'fixed inset-0 z-50 rounded-none'
+            : ''
+          }
+        `}
+        style={{
+          maxHeight: isFullscreen ? '100vh' : 'calc(100vh - 250px)',
+          overflowY: 'auto',
+          paddingBottom: '100px' // Space for fixed controls
+        }}
       >
-        <div ref={contentRef} className={`chordpro-container ${isFullscreen ? 'max-w-4xl w-full' : ''}`} />
+        <div ref={contentRef} className="chordpro-container p-6 md:p-8 lg:p-10" />
       </div>
 
-      {/* Learning Resources */}
-      {song.learningResource && (
-        <div className="bg-blue-50 rounded-lg shadow p-6 mt-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            Learning Resources
+      {/* Learning Resources - Below content, not in scroll area */}
+      {!isFullscreen && song.learningResource && (
+        <div className="mt-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow p-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            📚 Learning Resources
           </h3>
-          <div dangerouslySetInnerHTML={{ __html: linkify(song.learningResource) }} />
+          <div
+            className="text-sm text-gray-700 dark:text-gray-300"
+            dangerouslySetInnerHTML={{ __html: linkify(song.learningResource) }}
+          />
         </div>
       )}
 
       {/* Editing Notes */}
-      {song.editingNotes && (
-        <div className="bg-yellow-50 rounded-lg shadow p-6 mt-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Notes</h3>
-          <p className="text-gray-700 whitespace-pre-wrap">{song.editingNotes}</p>
+      {!isFullscreen && song.editingNotes && (
+        <div className="mt-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg shadow p-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            📝 Notes
+          </h3>
+          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+            {song.editingNotes}
+          </p>
         </div>
       )}
+
+      {/* Fixed Control Bar - Always visible, solid background */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-2xl z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* Playback Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleScroll}
+                className={`
+                  px-4 py-2 rounded-lg font-medium transition text-sm
+                  ${isScrolling
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }
+                `}
+                title="Toggle Auto-scroll (Space)"
+              >
+                {isScrolling ? '⏸ Pause' : '▶ Scroll'}
+              </button>
+
+              {/* Speed */}
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-2 py-2">
+                <button
+                  onClick={decreaseSpeed}
+                  className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition disabled:opacity-30 text-xs"
+                  disabled={scrollSpeed <= SCROLL.MIN_SPEED}
+                  title="Slower ([)"
+                >
+                  🐢
+                </button>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 min-w-[2.5rem] text-center">
+                  {scrollSpeed.toFixed(1)}x
+                </span>
+                <button
+                  onClick={increaseSpeed}
+                  className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition disabled:opacity-30 text-xs"
+                  disabled={scrollSpeed >= SCROLL.MAX_SPEED}
+                  title="Faster (])"
+                >
+                  🐇
+                </button>
+              </div>
+            </div>
+
+            <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 hidden md:block"></div>
+
+            {/* Display Controls */}
+            <div className="flex items-center gap-2">
+              {/* Font Size */}
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-2 py-2">
+                <button
+                  onClick={decreaseFontSize}
+                  className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition disabled:opacity-30 text-xs font-bold"
+                  disabled={fontSize <= FONT.MIN_SIZE}
+                  title="Smaller (-)"
+                >
+                  A-
+                </button>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 min-w-[1.5rem] text-center">
+                  {fontSize}
+                </span>
+                <button
+                  onClick={increaseFontSize}
+                  className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition disabled:opacity-30 text-xs font-bold"
+                  disabled={fontSize >= FONT.MAX_SIZE}
+                  title="Larger (+)"
+                >
+                  A+
+                </button>
+              </div>
+
+              {/* Toggle Chords */}
+              <button
+                onClick={toggleChords}
+                className={`
+                  px-4 py-2 rounded-lg font-medium transition text-sm
+                  ${showChords
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                  }
+                `}
+                title="Toggle Chords (C)"
+              >
+                {showChords ? '👁 Chords' : '🚫 Chords'}
+              </button>
+
+              {/* Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition text-sm font-medium"
+                title="Fullscreen (F)"
+              >
+                {isFullscreen ? '⛶ Exit' : '⛶ Full'}
+              </button>
+            </div>
+
+            <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 hidden md:block"></div>
+
+            {/* Shortcuts */}
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowShortcuts(true)}
+                onMouseLeave={() => setShowShortcuts(false)}
+                onClick={() => setShowShortcuts(!showShortcuts)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition text-sm font-medium"
+                title="Keyboard Shortcuts"
+              >
+                ⌨️
+              </button>
+
+              {showShortcuts && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-2xl p-3 z-50">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between"><span className="text-gray-400">Space</span><span>Scroll</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">[ / ]</span><span>Speed</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">+ / -</span><span>Font</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">C</span><span>Chords</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">F</span><span>Fullscreen</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">R</span><span>Random</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">G/Y/S</span><span>Search</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Esc</span><span>Exit</span></div>
+                  </div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-3 h-3 bg-gray-900 rotate-45"></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

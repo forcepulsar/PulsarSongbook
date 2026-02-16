@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,6 +7,11 @@
 @layer base {
   body {
     @apply m-0 min-h-screen;
+  }
+
+  /* Elegant serif font for headings */
+  .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
   }
 }
 
@@ -20,20 +27,21 @@
   }
 
   .chord {
-    @apply text-red-600 font-bold;
+    @apply text-red-600 dark:text-red-400 font-bold;
     font-family: monospace;
   }
 
   .lyrics {
     font-family: monospace;
+    @apply dark:text-gray-200;
   }
 
   .paragraph.chorus {
-    @apply bg-blue-50 p-4 rounded;
+    @apply bg-blue-50 dark:bg-blue-900/30 p-4 rounded;
   }
 
   .comment {
-    @apply text-green-600 italic;
+    @apply text-green-600 dark:text-green-400 italic;
   }
 
   .column {
@@ -53,6 +61,13 @@
     @apply invisible;
   }
 
+  /* CodeMirror Editor Font Size */
+  .codemirror-editor-custom .cm-content,
+  .codemirror-editor-custom .cm-line {
+    font-size: 14px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  }
+
   /* PWA Install prompt animation */
   @keyframes slide-up {
     from {
@@ -67,5 +82,64 @@
 
   .animate-slide-up {
     animation: slide-up 0.3s ease-out;
+  }
+
+  /* Fade in animation for smooth page loads */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  /* Smooth transitions for interactive elements */
+  button, a {
+    @apply transition-all duration-200;
+  }
+
+  /* Enhanced backdrop blur support */
+  @supports (backdrop-filter: blur(12px)) {
+    .backdrop-blur-xl {
+      backdrop-filter: blur(12px);
+    }
+  }
+
+  /* Prose styles for rich text content */
+  .prose {
+    @apply text-gray-700 dark:text-gray-300;
+  }
+
+  .prose a {
+    @apply text-blue-600 dark:text-blue-400 hover:underline;
+  }
+
+  .prose strong {
+    @apply font-semibold text-gray-900 dark:text-gray-100;
+  }
+
+  /* Better scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
   }
 }
