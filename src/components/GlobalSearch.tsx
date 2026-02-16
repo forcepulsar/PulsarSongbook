@@ -144,11 +144,11 @@ export default function GlobalSearch() {
         </button>
       </div>
 
-      {/* Dropdown Results - Fixed on mobile, absolute on desktop */}
+      {/* Dropdown Results */}
       {showDropdown && filteredSongs.length > 0 && (
         <div
           ref={dropdownRef}
-          className="fixed md:absolute top-[60px] md:top-full left-4 right-4 md:left-0 md:right-0 mt-0 md:mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto z-50"
+          className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto z-50"
         >
           {filteredSongs.map((song, index) => (
             <div
