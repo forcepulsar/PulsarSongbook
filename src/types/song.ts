@@ -34,6 +34,27 @@ export interface SyncQueueItem {
   data?: Partial<Song>;
 }
 
+export interface SetList {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string; // Firebase user ID
+}
+
+export interface SetListSongMap {
+  id: string;
+  setListId: string;
+  songId: string;
+  position: number; // Order in set list (0-indexed)
+  createdAt: Date;
+}
+
+export interface SetListWithSongs extends SetList {
+  songs: Song[];
+}
+
 // Salesforce export format (for import utility)
 export interface SalesforceSongExport {
   records: Array<{

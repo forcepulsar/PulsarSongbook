@@ -126,22 +126,33 @@ export default function SongList() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header with Stats */}
-      <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-3xl font-bold text-gray-800 truncate">Song Library</h1>
-            <p className="text-sm md:text-base text-gray-600 mt-1">
+            <h1 className="text-xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 truncate">Song Library</h1>
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
               {filteredSongs.length} of {songs.length} songs
             </p>
           </div>
-          <button
-            onClick={handleRandomSong}
-            className="px-3 py-2 md:px-6 md:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm md:text-base font-semibold whitespace-nowrap ml-2"
-            disabled={filteredSongs.length === 0}
-          >
-            <span className="md:hidden">🎲</span>
-            <span className="hidden md:inline">🎲 Random Song</span>
-          </button>
+          <div className="flex gap-2 ml-2">
+            {isApproved && (
+              <Link
+                to="/song/new"
+                className="px-3 py-2 md:px-6 md:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm md:text-base font-semibold whitespace-nowrap"
+              >
+                <span className="md:hidden">+</span>
+                <span className="hidden md:inline">+ New Song</span>
+              </Link>
+            )}
+            <button
+              onClick={handleRandomSong}
+              className="px-3 py-2 md:px-6 md:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm md:text-base font-semibold whitespace-nowrap"
+              disabled={filteredSongs.length === 0}
+            >
+              <span className="md:hidden">🎲</span>
+              <span className="hidden md:inline">🎲 Random Song</span>
+            </button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -153,7 +164,7 @@ export default function SongList() {
               placeholder="Search by title or artist..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
             />
           </div>
 
@@ -161,13 +172,13 @@ export default function SongList() {
           <div className={`grid grid-cols-2 gap-3 ${isApproved ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
             {/* Language Filter */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Language
               </label>
               <select
                 value={languageFilter}
                 onChange={(e) => setLanguageFilter(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
               >
                 <option value="all">All</option>
                 <option value="English">English</option>
@@ -177,13 +188,13 @@ export default function SongList() {
 
             {/* Difficulty Filter */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Difficulty
               </label>
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
               >
                 <option value="all">All</option>
                 <option value="Easy">Easy</option>
@@ -198,13 +209,13 @@ export default function SongList() {
               <>
                 {/* ChordPro Status Filter */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Status
                   </label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                   >
                     <option value="all">All</option>
                     <option value="To Do">To Do</option>
@@ -215,13 +226,13 @@ export default function SongList() {
 
                 {/* Priority Filter */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Priority
                   </label>
                   <select
                     value={priorityFilter}
                     onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                   >
                     <option value="all">All</option>
                     <option value="has-priority">Has Priority</option>
@@ -242,7 +253,7 @@ export default function SongList() {
                   setPriorityFilter('all');
                   setSearchParams({});
                 }}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
               >
                 Clear
               </button>
@@ -253,34 +264,34 @@ export default function SongList() {
 
       {/* Song List */}
       {filteredSongs.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 text-lg">No songs found</p>
-          <p className="text-gray-500 mt-2">Try adjusting your filters</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+          <p className="text-gray-600 dark:text-gray-400 text-lg">No songs found</p>
+          <p className="text-gray-500 dark:text-gray-500 mt-2">Try adjusting your filters</p>
         </div>
       ) : (
         <>
           {/* Mobile View - Card Layout (same for all users) */}
-          <div className="md:hidden bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="divide-y divide-gray-200">
+          <div className="md:hidden bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredSongs.map((song) => (
                 <div key={song.id} className="relative group">
                   <Link
                     to={`/song/${song.id}`}
-                    className="block px-4 py-3 hover:bg-gray-50 transition"
+                    className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-semibold text-gray-800 truncate">
+                        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 truncate">
                           {song.title}
                         </h3>
                         {song.artist && (
-                          <p className="text-sm text-gray-600 truncate">{song.artist}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{song.artist}</p>
                         )}
                       </div>
                       {isApproved && (
                         <Link
                           to={`/song/${song.id}/edit`}
-                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition text-sm"
+                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition text-sm"
                           onClick={(e) => e.stopPropagation()}
                           title="Edit song"
                         >
@@ -295,14 +306,14 @@ export default function SongList() {
           </div>
 
           {/* Desktop View - Table Layout */}
-          <div className="hidden md:block bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                   <tr>
                     <th
                       onClick={() => handleSort('title')}
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none"
+                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition select-none"
                     >
                       <div className="flex items-center gap-2">
                         <span>Title</span>
@@ -315,7 +326,7 @@ export default function SongList() {
                     </th>
                     <th
                       onClick={() => handleSort('artist')}
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none"
+                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition select-none"
                     >
                       <div className="flex items-center gap-2">
                         <span>Artist</span>
@@ -328,7 +339,7 @@ export default function SongList() {
                     </th>
                     <th
                       onClick={() => handleSort('language')}
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none"
+                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition select-none"
                     >
                       <div className="flex items-center gap-2">
                         <span>Language</span>
@@ -341,7 +352,7 @@ export default function SongList() {
                     </th>
                     <th
                       onClick={() => handleSort('difficulty')}
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none"
+                      className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition select-none"
                     >
                       <div className="flex items-center gap-2">
                         <span>Difficulty</span>
@@ -356,7 +367,7 @@ export default function SongList() {
                       <>
                         <th
                           onClick={() => handleSort('chordProStatus')}
-                          className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none"
+                          className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition select-none"
                         >
                           <div className="flex items-center gap-2">
                             <span>Status</span>
@@ -369,7 +380,7 @@ export default function SongList() {
                         </th>
                         <th
                           onClick={() => handleSort('priority')}
-                          className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none"
+                          className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition select-none"
                         >
                           <div className="flex items-center gap-2">
                             <span>Priority</span>
@@ -392,14 +403,14 @@ export default function SongList() {
                     <tr
                       key={song.id}
                       onClick={() => window.location.href = `/song/${song.id}`}
-                      className="hover:bg-gray-50 transition cursor-pointer"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
                     >
                       <td className="px-6 py-4">
-                        <span className="text-base font-semibold text-gray-800">
+                        <span className="text-base font-semibold text-gray-800 dark:text-gray-100">
                           {song.title}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                         {song.artist || '-'}
                       </td>
                       <td className="px-6 py-4">
@@ -407,16 +418,16 @@ export default function SongList() {
                           <span
                             className={`inline-block px-2 py-1 text-xs rounded font-medium ${
                               song.language === 'English'
-                                ? 'bg-blue-100 text-blue-800'
+                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'
                                 : song.language === 'Spanish'
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-gray-100 text-gray-800'
+                                ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                             }`}
                           >
                             {song.language}
                           </span>
                         ) : (
-                          <span className="text-sm text-gray-400">-</span>
+                          <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -424,16 +435,16 @@ export default function SongList() {
                           <span
                             className={`inline-block px-2 py-1 text-xs rounded font-medium ${
                               song.difficulty === 'Easy'
-                                ? 'bg-green-100 text-green-800'
+                                ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'
                                 : song.difficulty === 'Medium'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300'
+                                : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300'
                             }`}
                           >
                             {song.difficulty}
                           </span>
                         ) : (
-                          <span className="text-sm text-gray-400">-</span>
+                          <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
                         )}
                       </td>
                       {isApproved && (
@@ -443,26 +454,26 @@ export default function SongList() {
                               <span
                                 className={`inline-block px-2 py-1 text-xs rounded font-medium ${
                                   song.chordProStatus === 'Done'
-                                    ? 'bg-green-100 text-green-800'
+                                    ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'
                                     : song.chordProStatus === 'In Progress'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-800'
+                                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                                 }`}
                               >
                                 {song.chordProStatus}
                               </span>
                             ) : (
-                              <span className="text-sm text-gray-400">-</span>
+                              <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                             {song.priority || '-'}
                           </td>
                           <td className="px-6 py-4 text-right">
                             <Link
                               to={`/song/${song.id}/edit`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
+                              className="inline-flex items-center px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition"
                               title="Edit song"
                             >
                               ✏️ Edit

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getAllSongs } from '../services/firestore';
 import type { Song } from '../types/song';
 
@@ -10,7 +10,6 @@ export default function GlobalSearch() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const navigate = useNavigate();
-  const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -119,11 +118,6 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Hide on song library page (it has its own search)
-  if (location.pathname === '/') {
-    return null;
-  }
-
   return (
     <div className="flex-1 max-w-md mx-4 relative">
       <div className="relative">
@@ -134,7 +128,7 @@ export default function GlobalSearch() {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Search songs... (press / to focus)"
-          className="w-full px-4 py-2 pr-10 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-300"
+          className="w-full px-4 py-2 pr-10 rounded-lg text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-red-300"
         />
         <button
           type="button"
@@ -144,7 +138,7 @@ export default function GlobalSearch() {
               closeDropdown();
             }
           }}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         >
           🔍
         </button>
@@ -154,7 +148,7 @@ export default function GlobalSearch() {
       {showDropdown && filteredSongs.length > 0 && (
         <div
           ref={dropdownRef}
-          className="fixed md:absolute top-[60px] md:top-full left-4 right-4 md:left-0 md:right-0 mt-0 md:mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50"
+          className="fixed md:absolute top-[60px] md:top-full left-4 right-4 md:left-0 md:right-0 mt-0 md:mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto z-50"
         >
           {filteredSongs.map((song, index) => (
             <div
@@ -163,17 +157,17 @@ export default function GlobalSearch() {
               onMouseEnter={() => setSelectedIndex(index)}
               className={`px-4 py-3 cursor-pointer transition ${
                 index === selectedIndex
-                  ? 'bg-red-50 border-l-4 border-red-600'
-                  : 'hover:bg-gray-50 border-l-4 border-transparent'
+                  ? 'bg-red-50 dark:bg-red-900/30 border-l-4 border-red-600'
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-700 border-l-4 border-transparent'
               }`}
             >
-              <div className="font-semibold text-gray-800">{song.title}</div>
+              <div className="font-semibold text-gray-800 dark:text-gray-100">{song.title}</div>
               {song.artist && (
-                <div className="text-sm text-gray-600">{song.artist}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{song.artist}</div>
               )}
             </div>
           ))}
-          <div className="px-4 py-2 bg-gray-50 border-t text-xs text-gray-500 text-center">
+          <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 text-center">
             Use ↑↓ to navigate, Enter to select, Esc to close
           </div>
         </div>

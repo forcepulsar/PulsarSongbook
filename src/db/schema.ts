@@ -1,19 +1,31 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Song, AppSettings, SyncQueueItem } from '../types/song';
+import type { Song, AppSettings, SyncQueueItem, SetList, SetListSongMap } from '../types/song';
 
 // Define the database schema
 export class PulsarSongbookDB extends Dexie {
   songs!: EntityTable<Song, 'id'>;
   settings!: EntityTable<AppSettings, 'id'>;
   syncQueue!: EntityTable<SyncQueueItem, 'id'>;
+  setLists!: EntityTable<SetList, 'id'>;
+  setListSongs!: EntityTable<SetListSongMap, 'id'>;
 
   constructor() {
     super('PulsarSongbook');
 
+    // Version 1: Initial schema
     this.version(1).stores({
       songs: 'id, title, artist, language, difficulty, myLevel, priority, chordProStatus, createdAt, updatedAt, syncStatus',
       settings: 'id',
       syncQueue: 'id, songId, action, timestamp'
+    });
+
+    // Version 2: Add Set Lists feature
+    this.version(2).stores({
+      songs: 'id, title, artist, language, difficulty, myLevel, priority, chordProStatus, createdAt, updatedAt, syncStatus',
+      settings: 'id',
+      syncQueue: 'id, songId, action, timestamp',
+      setLists: 'id, name, createdAt, updatedAt, createdBy',
+      setListSongs: 'id, setListId, songId, position, createdAt'
     });
   }
 }

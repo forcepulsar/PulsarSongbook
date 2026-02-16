@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is approved
+    function isApprovedUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/approvedUsers/$(request.auth.token.email));
+    }
+
+    // Songs collection - anyone can read, approved users can write
+    match /songs/{songId} {
+      allow read: if true;  // Public viewing
+      allow create, update, delete: if isApprovedUser();
+    }
+
+    // Set Lists collection - anyone can read, approved users can write
+    match /setLists/{setListId} {
+      allow read: if true;  // Public viewing
+      allow create, update, delete: if isApprovedUser();
+    }
+
+    // Set List Songs junction table - anyone can read, approved users can write
+    match /setListSongs/{mappingId} {
+      allow read: if true;  // Public viewing
+      allow create, update, delete: if isApprovedUser();
+    }
+
+    // Approved users list - read-only for authenticated users
+    match /approvedUsers/{email} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only managed via Firebase console
+    }
+  }
+}

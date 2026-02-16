@@ -1,23 +1,29 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
-import { markdown } from '@codemirror/lang-markdown';
+import { chordProLanguage } from '../lib/codemirror/chordproLang';
 import { EditorView } from '@codemirror/view';
-import { githubLight } from '@uiw/codemirror-theme-github';
+import { chordProHighlighting, chordProTheme, chordProThemeDark } from '../lib/codemirror/chordproTheme';
 import { getSettings } from '../db/schema';
-import { getSong, updateSong } from '../services/firestore';
+import { getSong, updateSong, createSong } from '../services/firestore';
 import { parseAndFormatChordPro, applyAllStyles } from '../lib/chordpro/renderUtils';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { debounce } from '../lib/utils/debounce';
 import SongMetadataEditor from './SongMetadataEditor';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import type { Song } from '../types/song';
 
 export default function SongEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { currentUser } = useAuth();
+  const { theme } = useTheme();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const isOnline = useOnlineStatus();
+  const isNewSong = location.pathname === '/song/new';
 
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,8 +43,14 @@ export default function SongEdit() {
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState({ fontSize: 16, showChords: true });
 
-  // Load song from Firestore
+  // Load song from Firestore (skip for new songs)
   useEffect(() => {
+    if (isNewSong) {
+      // For new songs, just set loading to false and leave state empty
+      setLoading(false);
+      return;
+    }
+
     if (!id) return;
 
     getSong(id)
@@ -61,7 +73,7 @@ export default function SongEdit() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isNewSong]);
 
   // Load settings
   useEffect(() => {
@@ -98,36 +110,67 @@ export default function SongEdit() {
       return;
     }
 
-    if (!id || !song) {
-      alert('Song not found');
-      return;
-    }
-
     if (!metadata.title || metadata.title.trim() === '') {
       alert('Title is required');
       return;
     }
 
+    if (!currentUser) {
+      alert('You must be logged in to save songs');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      await updateSong(id, {
-        chordProContent: editorContent,
-        title: metadata.title || '',
-        artist: metadata.artist,
-        language: metadata.language,
-        difficulty: metadata.difficulty,
-        myLevel: metadata.myLevel,
-        priority: metadata.priority,
-        learningResource: metadata.learningResource,
-        editingNotes: metadata.editingNotes,
-        chordProStatus: metadata.chordProStatus
-      });
+      if (isNewSong) {
+        // Create new song
+        const newSongId = await createSong(
+          {
+            chordProContent: editorContent,
+            title: metadata.title || '',
+            artist: metadata.artist,
+            language: metadata.language,
+            difficulty: metadata.difficulty,
+            myLevel: metadata.myLevel,
+            priority: metadata.priority,
+            learningResource: metadata.learningResource,
+            editingNotes: metadata.editingNotes,
+            chordProStatus: metadata.chordProStatus
+          },
+          currentUser.uid
+        );
 
-      setHasUnsavedChanges(false);
-      alert('Song saved successfully!');
+        setHasUnsavedChanges(false);
+        alert('Song created successfully!');
 
-      // Navigate back to song view
-      navigate(`/song/${id}`);
+        // Navigate to the new song view
+        navigate(`/song/${newSongId}`);
+      } else {
+        // Update existing song
+        if (!id || !song) {
+          alert('Song not found');
+          return;
+        }
+
+        await updateSong(id, {
+          chordProContent: editorContent,
+          title: metadata.title || '',
+          artist: metadata.artist,
+          language: metadata.language,
+          difficulty: metadata.difficulty,
+          myLevel: metadata.myLevel,
+          priority: metadata.priority,
+          learningResource: metadata.learningResource,
+          editingNotes: metadata.editingNotes,
+          chordProStatus: metadata.chordProStatus
+        });
+
+        setHasUnsavedChanges(false);
+        alert('Song saved successfully!');
+
+        // Navigate back to song view
+        navigate(`/song/${id}`);
+      }
     } catch (error) {
       alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -170,7 +213,7 @@ export default function SongEdit() {
     );
   }
 
-  if (!song) {
+  if (!song && !isNewSong) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-lg shadow p-12 text-center">
@@ -189,35 +232,45 @@ export default function SongEdit() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Edit Song</h1>
-            <p className="text-gray-600 mt-1">{song.title}</p>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+              {isNewSong ? 'Create New Song' : 'Edit Song'}
+            </h1>
+            {!isNewSong && song && (
+              <p className="text-gray-600 dark:text-gray-400 mt-1">{song.title}</p>
+            )}
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={!isOnline || isSaving || !hasUnsavedChanges}
+              disabled={!isOnline || isSaving || (!hasUnsavedChanges && !isNewSong)}
               className={`px-6 py-2 rounded-lg transition font-semibold ${
-                !isOnline || isSaving || !hasUnsavedChanges
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                !isOnline || isSaving || (!hasUnsavedChanges && !isNewSong)
+                  ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                   : 'bg-red-600 text-white hover:bg-red-700'
               }`}
             >
-              {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'No Changes'}
+              {isSaving
+                ? 'Saving...'
+                : isNewSong
+                ? 'Create Song'
+                : hasUnsavedChanges
+                ? 'Save Changes'
+                : 'No Changes'}
             </button>
             <button
               onClick={() => {
                 if (hasUnsavedChanges) {
                   if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-                    navigate(`/song/${id}`);
+                    navigate(isNewSong ? '/' : `/song/${id}`);
                   }
                 } else {
-                  navigate(`/song/${id}`);
+                  navigate(isNewSong ? '/' : `/song/${id}`);
                 }
               }}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition dark:text-gray-200"
             >
               Cancel
             </button>
@@ -226,8 +279,8 @@ export default function SongEdit() {
 
         {/* Online/Offline Status */}
         {!isOnline && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mt-4">
-            <p className="text-yellow-700">
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 p-4 mt-4">
+            <p className="text-yellow-700 dark:text-yellow-300">
               You are offline. Editing is disabled. Please connect to the internet to edit songs.
             </p>
           </div>
@@ -235,24 +288,29 @@ export default function SongEdit() {
       </div>
 
       {/* Split-Pane Editor */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6 mb-6">
         {/* Left: CodeMirror Editor */}
         <div className="flex flex-col">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">ChordPro Editor</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">ChordPro Editor</h3>
             <CodeMirror
+              className="codemirror-editor-custom"
               value={editorContent}
               height="calc(100vh - 400px)"
-              extensions={[markdown(), EditorView.lineWrapping]}
+              extensions={[
+                chordProLanguage,
+                chordProHighlighting,
+                theme === 'dark' ? chordProThemeDark : chordProTheme,
+                EditorView.lineWrapping
+              ]}
               onChange={handleEditorChange}
               editable={isOnline}
               readOnly={!isOnline}
-              theme={githubLight}
               basicSetup={{
                 lineNumbers: true,
                 highlightActiveLineGutter: true,
                 highlightSpecialChars: true,
-                foldGutter: true,
+                foldGutter: false,
                 drawSelection: true,
                 dropCursor: true,
                 allowMultipleSelections: true,
@@ -266,9 +324,9 @@ export default function SongEdit() {
                 highlightSelectionMatches: true,
                 closeBracketsKeymap: true,
                 searchKeymap: true,
-                foldKeymap: true,
+                foldKeymap: false,
                 completionKeymap: true,
-                lintKeymap: true
+                lintKeymap: false
               }}
             />
           </div>
@@ -276,8 +334,8 @@ export default function SongEdit() {
 
         {/* Right: Live Preview */}
         <div className="flex flex-col">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Live Preview</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">Live Preview</h3>
             <div
               ref={previewRef}
               className="overflow-auto bg-gray-50 p-4 border border-gray-200 rounded-lg chordpro-container"
