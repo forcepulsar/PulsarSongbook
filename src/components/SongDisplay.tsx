@@ -198,78 +198,80 @@ export default function SongDisplay() {
   return (
     <div ref={pageRef} className="max-w-6xl mx-auto">
       {/* Compact Header - Song Info & Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          {/* Song Title & Artist - Compact */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 md:p-4 mb-4">
+        {/* Title Row */}
+        <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+            <h1 className="text-lg md:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
               {song.title}
-              {song.artist && (
-                <span className="text-base md:text-lg text-gray-600 dark:text-gray-400 font-normal ml-2">
-                  - {song.artist}
-                </span>
-              )}
             </h1>
-          </div>
-
-          {/* Quick Actions - Compact */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* External Links */}
-            <a
-              href={googleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-              title="Search on Google (G)"
-            >
-              <FaGoogle className="text-lg text-[#4285F4]" />
-            </a>
-            <a
-              href={youtubeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-              title="Search on YouTube (Y)"
-            >
-              <FaYoutube className="text-lg text-[#FF0000] dark:text-red-400" />
-            </a>
-            <a
-              href={spotifyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-              title="Search on Spotify (S)"
-            >
-              <FaSpotify className="text-lg text-[#1DB954] dark:text-green-400" />
-            </a>
-
-            <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
-
-            {/* Action Buttons */}
-            {isApproved && (
-              <Link
-                to={`/song/${id}/edit`}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-                title="Edit"
-              >
-                ✏️
-              </Link>
+            {song.artist && (
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
+                {song.artist}
+              </p>
             )}
-            <button
-              onClick={handleRandomSong}
-              className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
-              title="Random Song (R)"
-            >
-              🎲
-            </button>
-            <button
-              onClick={() => navigate(-1)}
-              className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm font-medium"
-              title="Back"
-            >
-              ←
-            </button>
           </div>
+
+          {/* Back Button - Always visible on mobile */}
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition flex-shrink-0"
+            title="Back"
+          >
+            ←
+          </button>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* External Links - Icon only on mobile */}
+          <a
+            href={googleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+            title="Search on Google (G)"
+          >
+            <FaGoogle className="text-base text-[#4285F4]" />
+          </a>
+          <a
+            href={youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+            title="Search on YouTube (Y)"
+          >
+            <FaYoutube className="text-base text-[#FF0000] dark:text-red-400" />
+          </a>
+          <a
+            href={spotifyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+            title="Search on Spotify (S)"
+          >
+            <FaSpotify className="text-base text-[#1DB954] dark:text-green-400" />
+          </a>
+
+          <div className="flex-1"></div>
+
+          {/* Main Action Buttons */}
+          {isApproved && (
+            <Link
+              to={`/song/${id}/edit`}
+              className="p-2 md:px-3 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              title="Edit"
+            >
+              ✏️
+            </Link>
+          )}
+          <button
+            onClick={handleRandomSong}
+            className="p-2 md:px-3 md:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            title="Random Song (R)"
+          >
+            🎲
+          </button>
         </div>
       </div>
 
@@ -277,7 +279,7 @@ export default function SongDisplay() {
       <div
         ref={scrollContainerRef}
         className={`
-          bg-white dark:bg-gray-900 rounded-lg shadow-lg
+          bg-white dark:bg-gray-800 rounded-lg shadow-lg
           ${isFullscreen
             ? 'fixed inset-0 z-50 rounded-none'
             : ''
@@ -294,12 +296,12 @@ export default function SongDisplay() {
 
       {/* Learning Resources - Below content, not in scroll area */}
       {!isFullscreen && song.learningResource && (
-        <div className="mt-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg shadow p-4 dark:border dark:border-blue-800/30">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-blue-200 mb-2">
             📚 Learning Resources
           </h3>
           <div
-            className="text-sm text-gray-700 dark:text-gray-300"
+            className="text-sm text-gray-700 dark:text-gray-200"
             dangerouslySetInnerHTML={{ __html: linkify(song.learningResource) }}
           />
         </div>
@@ -307,18 +309,18 @@ export default function SongDisplay() {
 
       {/* Editing Notes */}
       {!isFullscreen && song.editingNotes && (
-        <div className="mt-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg shadow p-4 dark:border dark:border-amber-800/30">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-amber-200 mb-2">
             📝 Notes
           </h3>
-          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+          <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
             {song.editingNotes}
           </p>
         </div>
       )}
 
       {/* Fixed Control Bar - Always visible, solid background */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-2xl z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-600 shadow-2xl z-50">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-center gap-3">
             {/* Playback Controls */}

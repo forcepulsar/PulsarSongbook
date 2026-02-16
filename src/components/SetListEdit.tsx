@@ -180,15 +180,6 @@ export default function SetListEdit() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Desktop Only Notice */}
-      <div className="md:hidden bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-6 text-center mb-6">
-        <p className="text-yellow-800 dark:text-yellow-200 font-semibold mb-2">Desktop Only Feature</p>
-        <p className="text-yellow-700 dark:text-yellow-300 text-sm">
-          Set Lists editing is only available on desktop devices. Please use a larger screen to access this feature.
-        </p>
-      </div>
-
-      <div className="hidden md:block">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between">
@@ -331,7 +322,6 @@ export default function SetListEdit() {
             </div>
           )}
         </div>
-      </div>
       </div>
     </div>
   );

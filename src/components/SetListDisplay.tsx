@@ -61,15 +61,6 @@ export default function SetListDisplay() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Desktop Only Notice */}
-      <div className="md:hidden bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-6 text-center mb-4">
-        <p className="text-yellow-800 dark:text-yellow-200 font-semibold mb-2">Desktop Only Feature</p>
-        <p className="text-yellow-700 dark:text-yellow-300 text-sm">
-          Set Lists are only available on desktop devices. Please use a larger screen to access this feature.
-        </p>
-      </div>
-
-      <div className="hidden md:block">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 mb-4">
         <div className="flex items-start justify-between gap-4">
@@ -147,7 +138,6 @@ export default function SetListDisplay() {
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
