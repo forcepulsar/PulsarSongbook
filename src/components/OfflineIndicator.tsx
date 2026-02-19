@@ -1,15 +1,20 @@
+import { useState } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export default function OfflineIndicator() {
   const isOnline = useOnlineStatus();
+  const [dismissed, setDismissed] = useState(false);
 
-  if (isOnline) return null;
+  // Reset dismissed state when going back online so it shows again if offline again
+  // (handled naturally since isOnline becoming true returns null below)
+
+  if (isOnline || dismissed) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white py-2 px-4 text-center text-sm font-medium z-50 shadow-lg">
+    <div className="bg-yellow-500 text-white py-2 px-4 text-sm font-medium shadow-lg flex items-center justify-between gap-2">
       <span className="inline-flex items-center gap-2">
         <svg
-          className="w-4 h-4"
+          className="w-4 h-4 flex-shrink-0"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -23,6 +28,15 @@ export default function OfflineIndicator() {
         </svg>
         You're offline. Some features may be limited.
       </span>
+      <button
+        onClick={() => setDismissed(true)}
+        className="p-1 rounded hover:bg-yellow-600 transition flex-shrink-0"
+        aria-label="Dismiss"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </div>
   );
 }

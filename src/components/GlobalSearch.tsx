@@ -48,8 +48,16 @@ export default function GlobalSearch() {
         return;
       }
 
-      // Focus search on "/" key
-      if (e.key === '/' && document.activeElement !== searchRef.current) {
+      // Focus search on "/" key — but not when typing in an input, textarea, or rich editor (e.g. CodeMirror)
+      const target = e.target as HTMLElement;
+      if (
+        e.key === '/' &&
+        document.activeElement !== searchRef.current &&
+        target.tagName !== 'INPUT' &&
+        target.tagName !== 'TEXTAREA' &&
+        !target.isContentEditable &&
+        target.contentEditable !== 'true'
+      ) {
         e.preventDefault();
         searchRef.current?.focus();
       }

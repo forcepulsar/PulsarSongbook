@@ -23,10 +23,12 @@ function App() {
   return (
     <BrowserRouter>
       {/* PWA Components */}
-      <OfflineIndicator />
       <InstallPrompt />
 
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+        {/* Offline banner — rendered in flow so it doesn't overlap the header */}
+        <OfflineIndicator />
+
         {/* Header */}
         <header className="bg-red-600 dark:bg-red-700 text-white shadow-lg sticky top-0 z-40">
           <div className="container mx-auto px-4 py-3">

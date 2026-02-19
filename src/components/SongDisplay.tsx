@@ -119,10 +119,21 @@ export default function SongDisplay() {
   }, [scrollSpeed]);
 
   // Random song handler
+  // Online: normal Firestore fetch. Offline: read from Firestore's local cache (instant, no network).
   const handleRandomSong = async () => {
     try {
-      const { getAllSongs } = await import('../services/firestore');
-      const allSongs = await getAllSongs();
+      let allSongs: Song[];
+
+      if (!navigator.onLine) {
+        const { collection, getDocsFromCache, query, orderBy } = await import('firebase/firestore');
+        const { db: firestoreDb } = await import('../lib/firebase/config');
+        const q = query(collection(firestoreDb, 'songs'), orderBy('title'));
+        const snapshot = await getDocsFromCache(q);
+        allSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Song));
+      } else {
+        const { getAllSongs } = await import('../services/firestore');
+        allSongs = await getAllSongs();
+      }
 
       if (allSongs.length === 0) return;
 
@@ -196,7 +207,7 @@ export default function SongDisplay() {
   const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}`;
 
   return (
-    <div ref={pageRef} className="max-w-6xl mx-auto">
+    <div ref={pageRef} className="max-w-6xl mx-auto pb-28">
       {/* Compact Header - Song Info & Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 md:p-4 mb-4">
         {/* Title Row */}

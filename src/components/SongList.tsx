@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { getAllSongs } from '../services/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import type { Song } from '../types/song';
@@ -20,6 +20,7 @@ export default function SongList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isApproved } = useAuth();
+  const navigate = useNavigate();
 
   // Update search term when URL changes
   useEffect(() => {
@@ -112,7 +113,7 @@ export default function SongList() {
     if (filteredSongs.length === 0) return;
     const randomIndex = Math.floor(Math.random() * filteredSongs.length);
     const randomSong = filteredSongs[randomIndex];
-    window.location.href = `/song/${randomSong.id}`;
+    navigate(`/song/${randomSong.id}`);
   };
 
   if (loading) {
@@ -402,7 +403,7 @@ export default function SongList() {
                   {filteredSongs.map((song) => (
                     <tr
                       key={song.id}
-                      onClick={() => window.location.href = `/song/${song.id}`}
+                      onClick={() => navigate(`/song/${song.id}`)}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
                     >
                       <td className="px-6 py-4">

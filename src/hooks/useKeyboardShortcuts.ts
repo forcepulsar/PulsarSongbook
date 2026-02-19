@@ -25,7 +25,8 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
       if (
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
+        target.isContentEditable ||
+        target.contentEditable === 'true'
       ) {
         return;
       }
