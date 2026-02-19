@@ -137,7 +137,7 @@ export default function SongDisplay() {
 
       if (allSongs.length === 0) return;
 
-      const otherSongs = allSongs.filter(s => s.id !== id);
+      const otherSongs = allSongs.filter(s => s.id !== id && s.chordProStatus !== 'To Do');
 
       if (otherSongs.length === 0) {
         alert('This is the only song in the library!');

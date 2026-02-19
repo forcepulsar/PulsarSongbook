@@ -108,11 +108,12 @@ export default function SongList() {
     });
   }, [songs, searchTerm, languageFilter, difficultyFilter, statusFilter, priorityFilter, sortColumn, sortDirection]);
 
-  // Random song function
+  // Random song function (excludes 'To Do' songs)
   const handleRandomSong = () => {
-    if (filteredSongs.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * filteredSongs.length);
-    const randomSong = filteredSongs[randomIndex];
+    const eligibleSongs = filteredSongs.filter(s => s.chordProStatus !== 'To Do');
+    if (eligibleSongs.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * eligibleSongs.length);
+    const randomSong = eligibleSongs[randomIndex];
     navigate(`/song/${randomSong.id}`);
   };
 
@@ -275,32 +276,29 @@ export default function SongList() {
           <div className="md:hidden bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredSongs.map((song) => (
-                <div key={song.id} className="relative group">
+                <div key={song.id} className="relative group flex items-stretch">
                   <Link
                     to={`/song/${song.id}`}
-                    className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    className="flex-1 block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition min-w-0"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 truncate">
-                          {song.title}
-                        </h3>
-                        {song.artist && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{song.artist}</p>
-                        )}
-                      </div>
-                      {isApproved && (
-                        <Link
-                          to={`/song/${song.id}/edit`}
-                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Edit song"
-                        >
-                          ✏️
-                        </Link>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 truncate">
+                        {song.title}
+                      </h3>
+                      {song.artist && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{song.artist}</p>
                       )}
                     </div>
                   </Link>
+                  {isApproved && (
+                    <Link
+                      to={`/song/${song.id}/edit`}
+                      className="flex items-center px-3 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition text-sm"
+                      title="Edit song"
+                    >
+                      ✏️
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
