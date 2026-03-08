@@ -12,11 +12,12 @@ import InstallPrompt from './components/InstallPrompt';
 import GlobalSearch from './components/GlobalSearch';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
+import SongConverter from './components/SongConverter';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 
 function App() {
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, signOut, isApproved } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -45,6 +46,11 @@ function App() {
                 <Link to="/setlists" className="px-3 py-2 rounded hover:bg-red-700 transition">
                   Set Lists
                 </Link>
+                {isApproved && (
+                  <Link to="/convert" className="px-3 py-2 rounded hover:bg-red-700 transition">
+                    Convert
+                  </Link>
+                )}
                 {currentUser && (
                   <Link to="/settings" className="px-3 py-2 rounded hover:bg-red-700 transition">
                     Settings
@@ -133,6 +139,15 @@ function App() {
                 >
                   📋 Set Lists
                 </Link>
+                {isApproved && (
+                  <Link
+                    to="/convert"
+                    className="block px-4 py-3 rounded hover:bg-red-600 transition text-base font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    🔄 Convert
+                  </Link>
+                )}
                 {currentUser && (
                   <Link
                     to="/settings"
@@ -215,6 +230,14 @@ function App() {
             />
             <Route path="/login" element={<Login />} />
             <Route path="/settings" element={<DataExport />} />
+            <Route
+              path="/convert"
+              element={
+                <ProtectedRoute>
+                  <SongConverter />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
       </div>

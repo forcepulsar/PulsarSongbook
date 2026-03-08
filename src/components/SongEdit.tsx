@@ -46,7 +46,22 @@ export default function SongEdit() {
   // Load song from Firestore (skip for new songs)
   useEffect(() => {
     if (isNewSong) {
-      // For new songs, just set loading to false and leave state empty
+      // Pre-populate from converter if state was passed
+      const state = location.state as { chordProContent?: string } | null;
+      if (state?.chordProContent) {
+        const content = state.chordProContent;
+        setEditorContent(content);
+        // Extract title and artist from ChordPro directives
+        const titleMatch = content.match(/\{title:\s*(.+?)\}/i);
+        const artistMatch = content.match(/\{st:\s*(.+?)\}/i);
+        if (titleMatch || artistMatch) {
+          setMetadata((prev) => ({
+            ...prev,
+            title: titleMatch ? titleMatch[1].trim() : prev.title,
+            artist: artistMatch ? artistMatch[1].trim() : prev.artist,
+          }));
+        }
+      }
       setLoading(false);
       return;
     }
