@@ -302,7 +302,9 @@ export default function SongDisplay() {
           paddingBottom: '100px' // Space for fixed controls
         }}
       >
-        <div ref={contentRef} className="chordpro-container p-6 md:p-8 lg:p-10" />
+        <div className={isFullscreen ? 'max-w-4xl mx-auto' : ''}>
+          <div ref={contentRef} className="chordpro-container p-6 md:p-8 lg:p-10" />
+        </div>
       </div>
 
       {/* Learning Resources - Below content, not in scroll area */}
