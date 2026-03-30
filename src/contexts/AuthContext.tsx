@@ -31,13 +31,22 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+
+const DEV_MOCK_USER = {
+  uid: 'dev-bypass-user',
+  email: 'dev@localhost',
+  displayName: 'Dev User',
+} as unknown as User;
+
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isApproved, setIsApproved] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(DEV_BYPASS ? DEV_MOCK_USER : null);
+  const [isApproved, setIsApproved] = useState(DEV_BYPASS);
+  const [loading, setLoading] = useState(!DEV_BYPASS);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (DEV_BYPASS) return;
     // Set a timeout to ensure loading state is cleared even if auth fails
     const timeout = setTimeout(() => {
       console.warn('[Auth] Timeout waiting for auth state, proceeding without auth');

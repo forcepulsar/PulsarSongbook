@@ -173,6 +173,7 @@ export default function SongDisplay() {
     onOpenYouTube: handleOpenYouTube,
     onOpenSpotify: handleOpenSpotify,
     onOpenChordify: handleOpenChordify,
+    onEditSong: isApproved ? () => navigate(`/song/${id}/edit`) : undefined,
   });
 
   if (loading) {
@@ -465,6 +466,7 @@ export default function SongDisplay() {
                     <div className="flex justify-between"><span className="text-gray-400">F</span><span>Fullscreen</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">R</span><span>Random</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">G/Y/S/D</span><span>Search</span></div>
+                    {isApproved && <div className="flex justify-between"><span className="text-gray-400">E</span><span>Edit</span></div>}
                     <div className="flex justify-between"><span className="text-gray-400">Esc</span><span>Exit</span></div>
                   </div>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-3 h-3 bg-gray-900 rotate-45"></div>

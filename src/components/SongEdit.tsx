@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { chordProLanguage } from '../lib/codemirror/chordproLang';
 import { EditorView } from '@codemirror/view';
-import { chordProHighlighting, chordProTheme, chordProThemeDark } from '../lib/codemirror/chordproTheme';
+import { chordProHighlighting, chordProHighlightingDark, chordProTheme, chordProThemeDark } from '../lib/codemirror/chordproTheme';
 import { getSettings } from '../db/schema';
 import { getSong, updateSong, createSong } from '../services/firestore';
 import { parseAndFormatChordPro, applyAllStyles } from '../lib/chordpro/renderUtils';
@@ -12,6 +12,7 @@ import { debounce } from '../lib/utils/debounce';
 import SongMetadataEditor from './SongMetadataEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { FONT } from '../lib/chordpro/constants';
 import type { Song } from '../types/song';
 
 export default function SongEdit() {
@@ -205,6 +206,15 @@ export default function SongEdit() {
     setHasUnsavedChanges(true);
   };
 
+  // Preview font size controls
+  const increasePreviewFontSize = () => {
+    setSettings((prev) => ({ ...prev, fontSize: Math.min(prev.fontSize + FONT.SIZE_STEP, FONT.MAX_SIZE) }));
+  };
+
+  const decreasePreviewFontSize = () => {
+    setSettings((prev) => ({ ...prev, fontSize: Math.max(prev.fontSize - FONT.SIZE_STEP, FONT.MIN_SIZE) }));
+  };
+
   // Warn before leaving page with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -312,10 +322,10 @@ export default function SongEdit() {
               className="codemirror-editor-custom"
               value={editorContent}
               height="calc(100vh - 400px)"
+              theme={theme === 'dark' ? chordProThemeDark : chordProTheme}
               extensions={[
                 chordProLanguage,
-                chordProHighlighting,
-                theme === 'dark' ? chordProThemeDark : chordProTheme,
+                theme === 'dark' ? chordProHighlightingDark : chordProHighlighting,
                 EditorView.lineWrapping
               ]}
               onChange={handleEditorChange}
@@ -350,7 +360,30 @@ export default function SongEdit() {
         {/* Right: Live Preview */}
         <div className="flex flex-col">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">Live Preview</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Live Preview</h3>
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-2 py-1">
+                <button
+                  onClick={decreasePreviewFontSize}
+                  disabled={settings.fontSize <= FONT.MIN_SIZE}
+                  className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition disabled:opacity-30 text-xs font-bold text-gray-700 dark:text-gray-200"
+                  title="Smaller font"
+                >
+                  A-
+                </button>
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 min-w-[1.5rem] text-center">
+                  {settings.fontSize}
+                </span>
+                <button
+                  onClick={increasePreviewFontSize}
+                  disabled={settings.fontSize >= FONT.MAX_SIZE}
+                  className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition disabled:opacity-30 text-xs font-bold text-gray-700 dark:text-gray-200"
+                  title="Larger font"
+                >
+                  A+
+                </button>
+              </div>
+            </div>
             <div
               ref={previewRef}
               className="overflow-auto bg-gray-50 dark:bg-gray-900 p-4 border border-gray-200 dark:border-gray-700 rounded-lg chordpro-container"

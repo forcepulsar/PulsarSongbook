@@ -14,6 +14,7 @@ export interface KeyboardShortcuts {
   onOpenYouTube?: () => void;
   onOpenSpotify?: () => void;
   onOpenChordify?: () => void;
+  onEditSong?: () => void;
 }
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = true): void {
@@ -106,6 +107,12 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
       if (key === 'd' && shortcuts.onOpenChordify) {
         event.preventDefault();
         shortcuts.onOpenChordify();
+      }
+
+      // E - Edit song
+      if (key === 'e' && shortcuts.onEditSong) {
+        event.preventDefault();
+        shortcuts.onEditSong();
       }
 
       // / - Focus search
