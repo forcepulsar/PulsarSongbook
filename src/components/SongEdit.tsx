@@ -221,8 +221,8 @@ export default function SongEdit() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 text-lg">Loading...</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Loading...</p>
         </div>
       </div>
     );
@@ -231,8 +231,8 @@ export default function SongEdit() {
   if (!song && !isNewSong) {
     return (
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 text-lg">Song not found</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Song not found</p>
           <button
             onClick={() => navigate('/')}
             className="inline-block mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
@@ -353,7 +353,7 @@ export default function SongEdit() {
             <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">Live Preview</h3>
             <div
               ref={previewRef}
-              className="overflow-auto bg-gray-50 p-4 border border-gray-200 rounded-lg chordpro-container"
+              className="overflow-auto bg-gray-50 dark:bg-gray-900 p-4 border border-gray-200 dark:border-gray-700 rounded-lg chordpro-container"
               style={{ height: 'calc(100vh - 400px)' }}
             />
           </div>

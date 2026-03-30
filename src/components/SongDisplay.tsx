@@ -157,6 +157,7 @@ export default function SongDisplay() {
   const handleOpenGoogle = () => window.open(googleUrl, '_blank', 'noopener,noreferrer');
   const handleOpenYouTube = () => window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
   const handleOpenSpotify = () => window.open(spotifyUrl, '_blank', 'noopener,noreferrer');
+  const handleOpenChordify = () => window.open(chordifyUrl, '_blank', 'noopener,noreferrer');
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -171,6 +172,7 @@ export default function SongDisplay() {
     onOpenGoogle: handleOpenGoogle,
     onOpenYouTube: handleOpenYouTube,
     onOpenSpotify: handleOpenSpotify,
+    onOpenChordify: handleOpenChordify,
   });
 
   if (loading) {
@@ -205,6 +207,8 @@ export default function SongDisplay() {
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
   const youtubeUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`;
   const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}`;
+  const chordifyQuery = `${song.artist ? `${song.artist} ` : ''}${song.title}`;
+  const chordifyUrl = `https://chordify.net/search/${encodeURIComponent(chordifyQuery)}`;
 
   return (
     <div ref={pageRef} className="max-w-6xl mx-auto pb-28">
@@ -262,6 +266,15 @@ export default function SongDisplay() {
             title="Search on Spotify (S)"
           >
             <FaSpotify className="text-base text-[#1DB954] dark:text-green-400" />
+          </a>
+          <a
+            href={chordifyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+            title="Search on Chordify (D)"
+          >
+            <img src="/chordify-icon.png" alt="Chordify" className="w-4 h-4" />
           </a>
 
           <div className="flex-1"></div>
@@ -451,7 +464,7 @@ export default function SongDisplay() {
                     <div className="flex justify-between"><span className="text-gray-400">C</span><span>Chords</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">F</span><span>Fullscreen</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">R</span><span>Random</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">G/Y/S</span><span>Search</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">G/Y/S/D</span><span>Search</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">Esc</span><span>Exit</span></div>
                   </div>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-3 h-3 bg-gray-900 rotate-45"></div>

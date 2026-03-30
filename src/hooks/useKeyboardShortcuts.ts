@@ -13,6 +13,7 @@ export interface KeyboardShortcuts {
   onOpenGoogle?: () => void;
   onOpenYouTube?: () => void;
   onOpenSpotify?: () => void;
+  onOpenChordify?: () => void;
 }
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = true): void {
@@ -99,6 +100,12 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
       if (key === 's' && shortcuts.onOpenSpotify) {
         event.preventDefault();
         shortcuts.onOpenSpotify();
+      }
+
+      // D - Open Chordify search
+      if (key === 'd' && shortcuts.onOpenChordify) {
+        event.preventDefault();
+        shortcuts.onOpenChordify();
       }
 
       // / - Focus search
