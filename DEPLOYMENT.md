@@ -508,6 +508,37 @@ After deployment, verify these features:
 
 ---
 
+## PWA Offline Testing
+
+### How to test offline mode
+
+1. Run `npm run build && npm run preview` (must use preview, not dev)
+2. Visit `http://localhost:4173` and browse a few songs (this warms the cache)
+3. DevTools → Network tab → change dropdown to **"Offline"**
+4. Refresh — app should still load with a yellow offline banner
+
+### Manual install via DevTools
+
+1. DevTools → Application tab → Manifest → click **"Install"**
+2. Or wait ~30 seconds for the custom install prompt to appear
+
+### Expected offline behaviour
+
+| Scenario | Result |
+|---|---|
+| First visit, online | Loads + caches everything |
+| First visit, offline | ❌ Won't load (no cache yet) |
+| Return visit, offline | ✅ Loads from cache |
+| Edit songs offline | ✅ Saves to IndexedDB, syncs when back online |
+
+### Service worker not showing?
+
+- Must be on `localhost:4173` (preview), not `localhost:5175` (dev) — service worker doesn't run in dev mode
+- DevTools → Application → Service Workers → should show "activated and is running"
+- If stuck: Application → Storage → Clear site data, then revisit
+
+---
+
 ## File Structure on Server
 
 ```

@@ -275,7 +275,7 @@ export default function SongDisplay() {
             className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
             title="Search on Chordify (D)"
           >
-            <img src="/chordify-icon.png" alt="Chordify" className="w-4 h-4" />
+            <img src="/icons/chordify-icon.png" alt="Chordify" className="w-4 h-4" />
           </a>
 
           <div className="flex-1"></div>
