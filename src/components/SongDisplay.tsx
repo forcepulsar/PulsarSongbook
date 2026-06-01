@@ -145,7 +145,7 @@ export default function SongDisplay() {
       }
 
       const { pickRandom } = await import('../lib/recentSongs');
-      const nextId = pickRandom(otherSongs.map(s => s.id), id);
+      const nextId = pickRandom(otherSongs.map(s => s.id), id ?? '');
       if (nextId) navigate(`/song/${nextId}`);
     } catch (error) {
       console.error('Error loading random song:', error);
