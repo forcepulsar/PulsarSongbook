@@ -1,4 +1,18 @@
-<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
-  <rect width="192" height="192" fill="#dc3545" rx="24"/>
-  <text x="96" y="140" font-size="100" text-anchor="middle" fill="white">🎸</text>
+<svg width="192" height="192" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#991b1b"/>
+    </radialGradient>
+    <clipPath id="wave-clip">
+      <circle cx="256" cy="256" r="200"/>
+    </clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="white" stroke-width="20"/>
+  <g clip-path="url(#wave-clip)">
+    <polyline
+      points="61,256 113,256 143,80 174,432 205,155 235,357 256,256 277,155 307,357 338,80 369,432 399,256 451,256"
+      stroke="white" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

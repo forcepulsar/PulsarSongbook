@@ -108,13 +108,14 @@ export default function SongList() {
     });
   }, [songs, searchTerm, languageFilter, difficultyFilter, statusFilter, priorityFilter, sortColumn, sortDirection]);
 
-  // Random song function (excludes 'To Do' songs)
+  // Random song function (only includes Done/In Progress songs)
   const handleRandomSong = () => {
-    const eligibleSongs = filteredSongs.filter(s => s.chordProStatus !== 'To Do');
+    const eligibleSongs = filteredSongs.filter(s => s.chordProStatus === 'Done' || s.chordProStatus === 'In Progress');
     if (eligibleSongs.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * eligibleSongs.length);
-    const randomSong = eligibleSongs[randomIndex];
-    navigate(`/song/${randomSong.id}`);
+    import('../lib/recentSongs').then(({ pickRandom }) => {
+      const nextId = pickRandom(eligibleSongs.map(s => s.id), '');
+      if (nextId) navigate(`/song/${nextId}`);
+    });
   };
 
   if (loading) {
