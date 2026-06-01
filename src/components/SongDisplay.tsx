@@ -137,16 +137,16 @@ export default function SongDisplay() {
 
       if (allSongs.length === 0) return;
 
-      const otherSongs = allSongs.filter(s => s.id !== id && s.chordProStatus !== 'To Do');
+      const otherSongs = allSongs.filter(s => s.id !== id && (s.chordProStatus === 'Done' || s.chordProStatus === 'In Progress'));
 
       if (otherSongs.length === 0) {
         alert('This is the only song in the library!');
         return;
       }
 
-      const randomIndex = Math.floor(Math.random() * otherSongs.length);
-      const randomSong = otherSongs[randomIndex];
-      navigate(`/song/${randomSong.id}`);
+      const { pickRandom } = await import('../lib/recentSongs');
+      const nextId = pickRandom(otherSongs.map(s => s.id), id);
+      if (nextId) navigate(`/song/${nextId}`);
     } catch (error) {
       console.error('Error loading random song:', error);
       alert('Failed to load random song');
