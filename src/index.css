@@ -159,9 +159,13 @@
 
   /* Section headers in dark mode */
   .dark .comment,
-  .dark h1,
-  .dark h2 {
+  .dark h1 {
     @apply text-amber-300;
+  }
+
+  /* Artist subtitle matches lyrics color */
+  .subtitle {
+    @apply text-gray-800 dark:text-gray-100;
   }
 
   /* Better chorus visibility in dark mode */

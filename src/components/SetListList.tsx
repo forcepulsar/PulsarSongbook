@@ -1,18 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllSetLists } from '../services/firestore';
+import { getAllSetLists, getSetListSongCounts } from '../services/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import type { SetList } from '../types/song';
 
 export default function SetListList() {
   const [setLists, setSetLists] = useState<SetList[]>([]);
+  const [songCounts, setSongCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isApproved } = useAuth();
 
   useEffect(() => {
     getAllSetLists()
-      .then(setSetLists)
+      .then(async (lists) => {
+        setSetLists(lists);
+        if (lists.length > 0) {
+          const counts = await getSetListSongCounts(lists.map((l) => l.id));
+          setSongCounts(counts);
+        }
+      })
       .catch((err) => {
         console.error('Error loading set lists:', err);
         setError('Failed to load set lists');
@@ -34,7 +41,7 @@ export default function SetListList() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 truncate">Set Lists</h1>
+            <h1 className="text-xl md:text-3xl font-bold font-serif text-gray-800 dark:text-gray-100 truncate">Set Lists</h1>
             <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
               {setLists.length} set list{setLists.length !== 1 ? 's' : ''}
             </p>
@@ -74,13 +81,18 @@ export default function SetListList() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">{setList.name}</h2>
+                  <h2 className="text-xl font-bold font-serif text-gray-800 dark:text-gray-100 mb-2">{setList.name}</h2>
                   {setList.description && (
                     <p className="text-gray-600 dark:text-gray-400 text-sm">{setList.description}</p>
                   )}
-                  <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
-                    Updated {new Date(setList.updatedAt).toLocaleDateString()}
-                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                      {songCounts[setList.id] ?? 0} song{(songCounts[setList.id] ?? 0) !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-gray-400 dark:text-gray-500 text-xs">
+                      Updated {new Date(setList.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
                 {isApproved && (
                   <Link

@@ -27,8 +27,8 @@ export function applyHeadingStyles(container: HTMLElement, fontSize: number): vo
       fontSize: `${fontSize * 1.125}px`,
       fontWeight: 'normal',
       marginBottom: '1.5rem',
-      color: '#666'
     });
+    element.style.removeProperty('color');
   });
 }
 

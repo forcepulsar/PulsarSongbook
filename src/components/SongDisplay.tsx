@@ -213,22 +213,9 @@ export default function SongDisplay() {
 
   return (
     <div ref={pageRef} className="max-w-6xl mx-auto pb-28">
-      {/* Compact Header - Song Info & Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 md:p-4 mb-4">
-        {/* Title Row */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg md:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
-              {song.title}
-            </h1>
-            {song.artist && (
-              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
-                {song.artist}
-              </p>
-            )}
-          </div>
-
-          {/* Back Button - Always visible on mobile */}
+      {/* Single-row header: back | links | actions */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 mb-4">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(-1)}
             className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition flex-shrink-0"
@@ -236,65 +223,42 @@ export default function SongDisplay() {
           >
             ←
           </button>
-        </div>
 
-        {/* Action Buttons Row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* External Links - Icon only on mobile */}
-          <a
-            href={googleUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <div className="flex-1" />
+
+          <a href={googleUrl} target="_blank" rel="noopener noreferrer"
             className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-            title="Search on Google (G)"
-          >
+            title="Search on Google (G)">
             <FaGoogle className="text-base text-[#4285F4]" />
           </a>
-          <a
-            href={youtubeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <a href={youtubeUrl} target="_blank" rel="noopener noreferrer"
             className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-            title="Search on YouTube (Y)"
-          >
+            title="Search on YouTube (Y)">
             <FaYoutube className="text-base text-[#FF0000] dark:text-red-400" />
           </a>
-          <a
-            href={spotifyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <a href={spotifyUrl} target="_blank" rel="noopener noreferrer"
             className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-            title="Search on Spotify (S)"
-          >
+            title="Search on Spotify (S)">
             <FaSpotify className="text-base text-[#1DB954] dark:text-green-400" />
           </a>
-          <a
-            href={chordifyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <a href={chordifyUrl} target="_blank" rel="noopener noreferrer"
             className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
-            title="Search on Chordify (D)"
-          >
+            title="Search on Chordify (D)">
             <img src="/icons/chordify-icon.png" alt="Chordify" className="w-4 h-4" />
           </a>
 
-          <div className="flex-1"></div>
+          <div className="flex-1" />
 
-          {/* Main Action Buttons */}
           {isApproved && (
-            <Link
-              to={`/song/${id}/edit`}
-              className="p-2 md:px-3 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              title="Edit"
-            >
+            <Link to={`/song/${id}/edit`}
+              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              title="Edit">
               ✏️
             </Link>
           )}
-          <button
-            onClick={handleRandomSong}
-            className="p-2 md:px-3 md:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-            title="Random Song (R)"
-          >
+          <button onClick={handleRandomSong}
+            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            title="Random Song (R)">
             🎲
           </button>
         </div>
