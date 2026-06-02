@@ -26,7 +26,7 @@ echo "📦 Building production bundle..."
 npm run build
 
 # Verify bypass did not leak into bundle
-if grep -qr "dev@localhost" dist/assets/*.js 2>/dev/null; then
+if grep -qr "dev@localhost" dist/assets/*.js dist/assets/*.mjs 2>/dev/null; then
   echo ""
   echo "❌ dev@localhost found in bundle — do NOT deploy this build."
   echo "   Check your .env files for VITE_DEV_BYPASS_AUTH=true."
