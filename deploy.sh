@@ -2,56 +2,44 @@
 # Pulsar Songbook - Production Build Script
 # Run this before uploading dist/ to Bluehost
 #
-# What it does:
-#   1. Disables dev auth bypass (VITE_DEV_BYPASS_AUTH) so it's NOT in the production bundle
-#   2. Runs npm run build
-#   3. Re-enables the bypass so local dev still works
-#   4. Reminds you to upload dist/ to Bluehost
+# VITE_DEV_BYPASS_AUTH lives in .env.development.local, which Vite only
+# reads during `npm run dev` — it is never included in production builds.
+# This script adds a safety check to catch any accidental misconfiguration.
 
 set -e
-
-ENV_FILE=".env.local"
-BACKUP_VALUE=""
 
 echo "🏗️  Pulsar Songbook — Production Build"
 echo "======================================="
 
-# Step 1: Disable dev auth bypass
-if grep -q "VITE_DEV_BYPASS_AUTH" "$ENV_FILE" 2>/dev/null; then
-  BACKUP_VALUE=$(grep "VITE_DEV_BYPASS_AUTH" "$ENV_FILE" | cut -d'=' -f2)
-  sed -i '' 's/VITE_DEV_BYPASS_AUTH=.*/VITE_DEV_BYPASS_AUTH=false/' "$ENV_FILE"
-  echo "✅ Dev auth bypass disabled in $ENV_FILE"
-else
-  echo "ℹ️  VITE_DEV_BYPASS_AUTH not found in $ENV_FILE — skipping"
+# Safety check: abort if dev auth bypass would leak into the bundle
+if grep -q "VITE_DEV_BYPASS_AUTH=true" .env.local 2>/dev/null; then
+  echo "❌ VITE_DEV_BYPASS_AUTH=true found in .env.local"
+  echo "   This would be baked into the production bundle."
+  echo "   Move it to .env.development.local instead, then re-run."
+  exit 1
 fi
+echo "✅ No dev auth bypass in .env.local"
 
-# Step 2: Build
+# Build
 echo ""
 echo "📦 Building production bundle..."
 npm run build
 
-BUILD_EXIT=$?
-
-# Step 3: Restore dev auth bypass
-if [ -n "$BACKUP_VALUE" ] && [ "$BACKUP_VALUE" != "false" ]; then
-  sed -i '' "s/VITE_DEV_BYPASS_AUTH=.*/VITE_DEV_BYPASS_AUTH=${BACKUP_VALUE}/" "$ENV_FILE"
+# Verify bypass did not leak into bundle
+if grep -qr "dev@localhost" dist/assets/*.js 2>/dev/null; then
   echo ""
-  echo "✅ Dev auth bypass restored to: VITE_DEV_BYPASS_AUTH=${BACKUP_VALUE}"
-fi
-
-# Step 4: Summary
-if [ $BUILD_EXIT -eq 0 ]; then
-  echo ""
-  echo "✅ Build complete! Files are in dist/"
-  echo ""
-  echo "Next step — Upload to Bluehost:"
-  echo "  1. Login to https://my.bluehost.com → cPanel → File Manager"
-  echo "  2. Navigate to public_html/"
-  echo "  3. Upload all contents of dist/ (overwrite existing files)"
-  echo "  4. Keep .htaccess — do NOT delete it"
-  echo ""
-else
-  echo ""
-  echo "❌ Build failed. Check errors above."
+  echo "❌ dev@localhost found in bundle — do NOT deploy this build."
+  echo "   Check your .env files for VITE_DEV_BYPASS_AUTH=true."
   exit 1
 fi
+echo "✅ Bundle verified — no dev auth bypass present"
+
+echo ""
+echo "✅ Build complete! Files are in dist/"
+echo ""
+echo "Next step — Upload to Bluehost:"
+echo "  1. Login to https://my.bluehost.com → cPanel → File Manager"
+echo "  2. Navigate to public_html/"
+echo "  3. Upload all contents of dist/ (overwrite existing files)"
+echo "  4. Keep .htaccess — do NOT delete it"
+echo ""
