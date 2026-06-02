@@ -136,6 +136,21 @@ export async function getAllSetLists(): Promise<SetList[]> {
   });
 }
 
+export async function getSetListSongCounts(setListIds: string[]): Promise<Record<string, number>> {
+  if (setListIds.length === 0) return {};
+  const q = query(
+    collection(db, SETLIST_SONGS_COLLECTION),
+    where('setListId', 'in', setListIds)
+  );
+  const snapshot = await getDocs(q);
+  const counts: Record<string, number> = {};
+  snapshot.docs.forEach((d) => {
+    const id = d.data().setListId as string;
+    counts[id] = (counts[id] ?? 0) + 1;
+  });
+  return counts;
+}
+
 export async function getSetList(id: string): Promise<SetList | null> {
   const docRef = doc(db, SETLISTS_COLLECTION, id);
   const docSnap = await getDoc(docRef);

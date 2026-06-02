@@ -255,7 +255,7 @@ export default function SongEdit() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between">
@@ -313,7 +313,7 @@ export default function SongEdit() {
       </div>
 
       {/* Split-Pane Editor */}
-      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[700px_1fr] gap-6 mb-6">
         {/* Left: CodeMirror Editor */}
         <div className="flex flex-col">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">

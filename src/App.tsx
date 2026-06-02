@@ -1,20 +1,34 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import SongList from './components/SongList';
 import SongDisplay from './components/SongDisplay';
-import SongEdit from './components/SongEdit';
 import SetListList from './components/SetListList';
 import SetListDisplay from './components/SetListDisplay';
-import SetListEdit from './components/SetListEdit';
-import DataExport from './components/DataExport';
 import OfflineIndicator from './components/OfflineIndicator';
 import InstallPrompt from './components/InstallPrompt';
 import GlobalSearch from './components/GlobalSearch';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
-import SongConverter from './components/SongConverter';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
+
+// Heavy routes — loaded on demand
+const SongEdit = lazy(() => import('./components/SongEdit'));
+const SongConverter = lazy(() => import('./components/SongConverter'));
+const SetListEdit = lazy(() => import('./components/SetListEdit'));
+const DataExport = lazy(() => import('./components/DataExport'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+      <svg className="animate-spin h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+      Loading…
+    </div>
+  );
+}
 
 function App() {
   const { currentUser, signOut, isApproved } = useAuth();
@@ -190,55 +204,57 @@ function App() {
         </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-4 py-6">
-          <Routes>
-            <Route path="/" element={<SongList />} />
-            <Route path="/song/:id" element={<SongDisplay />} />
-            <Route
-              path="/song/new"
-              element={
-                <ProtectedRoute>
-                  <SongEdit />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/song/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <SongEdit />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/setlists" element={<SetListList />} />
-            <Route
-              path="/setlist/new"
-              element={
-                <ProtectedRoute>
-                  <SetListEdit />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/setlist/:id" element={<SetListDisplay />} />
-            <Route
-              path="/setlist/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <SetListEdit />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/login" element={<Login />} />
-            <Route path="/settings" element={<DataExport />} />
-            <Route
-              path="/convert"
-              element={
-                <ProtectedRoute>
-                  <SongConverter />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+        <main className="max-w-screen-2xl mx-auto px-4 py-6">
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<SongList />} />
+              <Route path="/song/:id" element={<SongDisplay />} />
+              <Route
+                path="/song/new"
+                element={
+                  <ProtectedRoute>
+                    <SongEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/song/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <SongEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/setlists" element={<SetListList />} />
+              <Route
+                path="/setlist/new"
+                element={
+                  <ProtectedRoute>
+                    <SetListEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/setlist/:id" element={<SetListDisplay />} />
+              <Route
+                path="/setlist/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <SetListEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/login" element={<Login />} />
+              <Route path="/settings" element={<DataExport />} />
+              <Route
+                path="/convert"
+                element={
+                  <ProtectedRoute>
+                    <SongConverter />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Suspense>
         </main>
       </div>
     </BrowserRouter>
