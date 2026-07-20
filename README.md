@@ -156,12 +156,15 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions to Blu
    without it the build deploys as a blank page. See
    [DEPLOYMENT.md → Firebase Configuration](./DEPLOYMENT.md#firebase-configuration).
 
-2. **Build + deploy (recommended):**
+2. **Build:**
    ```bash
-   site-deploy songbook      # builds via deploy.sh (with safety guards) + uploads
+   bash deploy.sh            # portable: build + safety guards, outputs dist/
    ```
-   Or build manually with `bash deploy.sh` and upload the contents of `dist/` to
-   `public_html/`. The `.htaccess` is tracked in `public/` and ships automatically.
+   Then upload the contents of `dist/` to `public_html/` (the `.htaccess` is tracked
+   in `public/` and ships automatically — see DEPLOYMENT.md for the dotfile caveat).
+
+   If you have the personal `site-deploy` tool configured (machine-local, not in the
+   repo), `site-deploy songbook` does the build + upload in one step.
 
 3. **Test:** Visit your domain and verify the app actually renders (not just loads).
 

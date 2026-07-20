@@ -344,11 +344,18 @@ firebase apps:sdkconfig WEB --project pulsar-songbook-3a929
 > `deploy.sh` guards against this and aborts the build if the config is absent.
 
 **Verify a build actually renders** (not just that files exist) before trusting a
-deploy — a headless render catches a blank page that HTTP 200 checks miss:
+deploy — a headless render catches a blank page that HTTP 200 checks miss. Check
+that React actually mounted into `#root` (which is empty in the static shell), and
+give the JS time to run with `--virtual-time-budget`. Do **not** grep for the page
+`<title>` or "Pulsar Songbook" — those live in the static HTML and match even on a
+blank page:
 
 ```bash
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  --headless=new --dump-dom https://songbook.julianvirguez.com/ | grep -c "Pulsar Songbook"
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+"$CHROME" --headless=new --disable-gpu --virtual-time-budget=8000 \
+  --dump-dom https://songbook.julianvirguez.com/ \
+  | tr -d '\n' | grep -qE 'id="root"><[a-zA-Z]' \
+  && echo "✅ app rendered" || echo "❌ BLANK PAGE — do not trust this deploy"
 ```
 
 ---
@@ -377,8 +384,12 @@ FTPS-uploads `dist/` to the server.
 bash deploy.sh
 ```
 then upload the contents of `dist/` to `public_html/`, overwriting existing files.
-Since `.htaccess` now ships inside `dist/`, overwriting is safe — there's nothing
-to preserve by hand.
+`.htaccess` now ships inside `dist/`, so there's nothing to preserve by hand —
+**but** it's a dotfile, and cPanel File Manager and most FTP clients hide dotfiles
+by default. Enable "Show Hidden Files (dotfiles)" (cPanel File Manager → Settings)
+or your FTP client's equivalent, and confirm `.htaccess` actually landed in
+`public_html/` after upload. If it's missing, deep-link refreshes 404 and HTTPS
+redirect stops working. (The `site-deploy` path transfers dotfiles automatically.)
 
 ### Step 4: Clear Cache
 
