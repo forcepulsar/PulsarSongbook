@@ -663,17 +663,14 @@ npm run build
 
 ## Changelog
 
-Track your deployments here:
+The commit history is the source of truth for what shipped and when:
 
-### [DATE] - v1.0.0
-- Initial deployment
-- All core features working
-- PWA installation functional
+```bash
+git log --oneline
+```
 
-### [DATE] - v1.1.0
-- Added keyboard shortcuts for Google/YouTube/Spotify (G, Y, S)
-- Fixed scroll position on song navigation
-- Mobile optimization for song library
+See the [GitHub commit history](https://github.com/forcepulsar/PulsarSongbook/commits/main)
+for the same online.
 
 ---
 
