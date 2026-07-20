@@ -20,6 +20,29 @@ if grep -q "VITE_DEV_BYPASS_AUTH=true" .env.local 2>/dev/null; then
 fi
 echo "✅ No dev auth bypass in .env.local"
 
+# Safety check: abort if the Firebase web config is incomplete. Vite inlines
+# these at build time; ANY missing var bakes `undefined` into the bundle and the
+# app loads to a BLANK PAGE (Firebase throws before React mounts). Validate the
+# source of truth (.env.local) rather than a minifier-specific bundle string, so
+# the check survives minifier/Vite changes and catches partially-missing configs.
+FIREBASE_VARS="VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID"
+missing=""
+for var in $FIREBASE_VARS; do
+  # require `VAR=<non-empty, non-whitespace>` somewhere in .env.local
+  if ! grep -qE "^[[:space:]]*${var}[[:space:]]*=[[:space:]]*[^[:space:]]" .env.local 2>/dev/null; then
+    missing="${missing} ${var}"
+  fi
+done
+if [ -n "$missing" ]; then
+  echo "❌ Firebase config incomplete in .env.local. Missing/empty:${missing}"
+  echo "   The app would deploy to a BLANK PAGE (Firebase init throws on load)."
+  echo "   Regenerate:  firebase apps:sdkconfig WEB --project pulsar-songbook-3a929"
+  echo "   then set the VITE_FIREBASE_* values in .env.local"
+  echo "   (see CLAUDE.md / DEPLOYMENT.md 'Firebase Configuration')."
+  exit 1
+fi
+echo "✅ Firebase config complete (all 6 VITE_FIREBASE_* set)"
+
 # Build
 echo ""
 echo "📦 Building production bundle..."
@@ -37,9 +60,14 @@ echo "✅ Bundle verified — no dev auth bypass present"
 echo ""
 echo "✅ Build complete! Files are in dist/"
 echo ""
-echo "Next step — Upload to Bluehost:"
-echo "  1. Login to https://my.bluehost.com → cPanel → File Manager"
-echo "  2. Navigate to public_html/"
-echo "  3. Upload all contents of dist/ (overwrite existing files)"
-echo "  4. Keep .htaccess — do NOT delete it"
+echo "Next step — deploy:"
+echo "  Easiest:  site-deploy songbook   (builds + FTPS-uploads automatically)"
+echo ""
+echo "  Manual (cPanel File Manager):"
+echo "    1. Login to https://my.bluehost.com → cPanel → File Manager"
+echo "    2. Settings → enable 'Show Hidden Files (dotfiles)'  ← required for .htaccess"
+echo "    3. Navigate to public_html/"
+echo "    4. Upload ALL contents of dist/ — including .htaccess — overwriting existing"
+echo "       (.htaccess ships inside dist/ now; do NOT hand-preserve the server copy,"
+echo "        or edits to public/.htaccess will never take effect in production)"
 echo ""
