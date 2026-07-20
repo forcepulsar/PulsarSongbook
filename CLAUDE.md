@@ -255,12 +255,27 @@ Supported directives: `{title:}`, `{artist:}`, `{comment:}`
 
 See `DEPLOYMENT.md` for full deployment instructions to Bluehost.
 
+**Build (`deploy.sh`):**
+- Run `bash deploy.sh` instead of `npm run build` for production. It runs the
+  build plus a safety check that aborts if the dev auth bypass
+  (`VITE_DEV_BYPASS_AUTH`) would leak into the bundle.
+- Outputs a self-contained `dist/` — no manual server-side steps required.
+
+**Automated upload (`site-deploy`):**
+- `site-deploy songbook` builds (via `deploy.sh`) and FTPS-uploads `dist/` to the
+  Bluehost doc root. `site-deploy --all` pushes every configured site.
+- `site-deploy` is a personal machine-local tool; its config (FTP credentials,
+  per-site `remoteDir`) lives outside the repo at
+  `~/.config/site-deploy/sites.json` (chmod 600) — it is **not** part of this
+  codebase. Manual cPanel upload still works as a fallback.
+
 **Key points:**
-- Build: `npm run build` (outputs to `dist/`)
-- Upload entire `dist/` folder contents to `public_html/`
-- Requires `.htaccess` for React Router (see DEPLOYMENT.md)
-- Requires HTTPS for PWA functionality
-- Legacy version automatically included in build (`dist/legacy/`)
+- `.htaccess` is tracked at `public/.htaccess` and Vite copies it into `dist/`
+  automatically. It provides the SPA fallback (BrowserRouter deep links),
+  HTTP→HTTPS redirect (required for PWA), CORS, gzip, and caching. Do not
+  hand-place it on the server — the build ships it.
+- Requires HTTPS for PWA functionality.
+- Legacy version automatically included in build (`dist/legacy/`).
 
 ## Testing
 

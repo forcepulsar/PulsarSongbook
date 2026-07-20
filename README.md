@@ -152,14 +152,18 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions to Blu
 
 ### Quick Steps
 
-1. **Build:**
+1. **Prerequisite:** ensure `.env.local` exists with the `VITE_FIREBASE_*` config —
+   without it the build deploys as a blank page. See
+   [DEPLOYMENT.md → Firebase Configuration](./DEPLOYMENT.md#firebase-configuration).
+
+2. **Build + deploy (recommended):**
    ```bash
-   npm run build
+   site-deploy songbook      # builds via deploy.sh (with safety guards) + uploads
    ```
+   Or build manually with `bash deploy.sh` and upload the contents of `dist/` to
+   `public_html/`. The `.htaccess` is tracked in `public/` and ships automatically.
 
-2. **Upload:** Upload contents of `dist/` folder to `public_html/` on Bluehost
-
-3. **Test:** Visit your domain and verify functionality
+3. **Test:** Visit your domain and verify the app actually renders (not just loads).
 
 ## Keyboard Shortcuts
 

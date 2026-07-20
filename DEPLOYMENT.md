@@ -3,36 +3,64 @@
 This guide explains how to deploy the Pulsar Songbook PWA to Bluehost hosting.
 
 ## Table of Contents
-- [Quick Deployment Steps](#quick-deployment-steps)
+- [Automated Deployment (Recommended)](#automated-deployment-recommended)
+- [Manual Deployment Steps](#manual-deployment-steps)
 - [Legacy Version for iOS 12](#legacy-version-for-ios-12)
 - [Initial Setup (One-Time)](#initial-setup-one-time)
+- [Firebase Configuration](#firebase-configuration)
 - [Regular Updates](#regular-updates)
 - [Troubleshooting](#troubleshooting)
 - [Testing Checklist](#testing-checklist)
 
 ---
 
-## Quick Deployment Steps
+## Automated Deployment (Recommended)
+
+The fastest path is the `site-deploy` tool, which builds (through `deploy.sh`) and
+FTPS-uploads `dist/` to Bluehost in one command:
+
+```bash
+site-deploy songbook          # build + upload this site
+site-deploy --dry-run songbook  # build + show what would upload, no upload
+site-deploy --all             # deploy every configured site
+```
+
+`site-deploy` is a personal, machine-local tool. Its config (FTP credentials,
+per-site `remoteDir`) lives **outside this repo** at
+`~/.config/site-deploy/sites.json` (chmod 600). It is not part of this codebase,
+so a fresh checkout won't have it — the manual steps below are the fallback.
+
+> **⚠️ Prerequisite — `.env.local` must exist before building.**
+> The Firebase web config is read from `.env.local` at build time (see
+> [Firebase Configuration](#firebase-configuration)). If it's missing, Vite bakes
+> `apiKey: undefined` into the bundle and the deployed app loads to a **blank
+> page**. `deploy.sh` now aborts the build if the Firebase config is missing, but
+> only after you've created `.env.local`. To recreate it from the Firebase project:
+> ```bash
+> firebase apps:sdkconfig WEB --project pulsar-songbook-3a929
+> ```
+> then write the six values into `.env.local` as `VITE_FIREBASE_*` keys.
+
+---
+
+## Manual Deployment Steps
 
 ### 1. Build Production Version
 
 ```bash
-# Navigate to project directory
-cd /Users/julianvirguez/Documents/dev/SF/PulsarSongbook/pulsar-songbook
-
-# Install dependencies (if needed)
-npm install
-
-# Build production files
-npm run build
+cd <project-root>        # e.g. ~/Developer/personal/pulsar-songbook
+npm install              # if dependencies changed
+bash deploy.sh           # build + safety checks (see below)
 ```
 
-**What this does:**
-- Creates optimized, minified files in `dist/` folder
-- Generates service worker for PWA functionality
-- Bundles all assets (JS, CSS, images)
+Use `bash deploy.sh` rather than a bare `npm run build`. It runs the production
+build plus two guards that abort before you ship a broken bundle:
+- **Dev auth bypass** must not leak into the bundle.
+- **Firebase config** must be present (catches a missing `.env.local`).
 
-**Output:** All deployable files are in the `dist/` folder
+**Output:** All deployable files are in the `dist/` folder — including
+`.htaccess`, which is tracked in the repo (`public/.htaccess`) and copied into
+`dist/` automatically by Vite. No manual server-side `.htaccess` step is needed.
 
 ---
 
@@ -274,66 +302,54 @@ These steps only need to be done once, unless you change domains or hosting.
    - Already configured in `.htaccess` (see below)
    - Automatically redirects HTTP → HTTPS
 
-### Create .htaccess File
+### .htaccess (tracked in repo — no manual step)
 
-**Location:** `public_html/.htaccess`
+The `.htaccess` is version-controlled at **`public/.htaccess`** and Vite copies it
+into `dist/` on every build, so it ships automatically with each deploy. You do
+**not** create or maintain it by hand in cPanel anymore.
 
-**Purpose:** Enables React Router, HTTPS redirect, compression, caching
+It provides:
+- **SPA fallback** — rewrites deep links (e.g. `/setlist/123`) to `index.html` so
+  BrowserRouter routes don't 404 on refresh.
+- **HTTP → HTTPS redirect** — required for PWA functionality.
+- **CORS** headers for fonts, **gzip** compression, and **browser caching**.
 
-**Content:**
-```apache
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
+To change these rules, edit `public/.htaccess` and redeploy — never edit the copy
+on the server, or your change will be overwritten on the next upload.
 
-  # Redirect HTTP to HTTPS (required for PWA)
-  RewriteCond %{HTTPS} off
-  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+### Firebase Configuration
 
-  # Don't rewrite files or directories
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
+The app's Firebase web config is read from **`.env.local`** at build time. This
+file is gitignored (it must never be committed — the repo is public) and is **not**
+present in a fresh checkout, so you must create it before the first build.
 
-  # Rewrite everything else to index.html (React Router)
-  RewriteRule ^ index.html [L]
-</IfModule>
-
-# Enable CORS for fonts and assets
-<FilesMatch "\.(ttf|otf|eot|woff|woff2|svg)$">
-  <IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-  </IfModule>
-</FilesMatch>
-
-# Enable gzip compression
-<IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
-</IfModule>
-
-# Browser caching
-<IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType image/jpg "access plus 1 year"
-  ExpiresByType image/jpeg "access plus 1 year"
-  ExpiresByType image/gif "access plus 1 year"
-  ExpiresByType image/png "access plus 1 year"
-  ExpiresByType image/svg+xml "access plus 1 year"
-  ExpiresByType text/css "access plus 1 month"
-  ExpiresByType application/javascript "access plus 1 month"
-  ExpiresByType application/pdf "access plus 1 month"
-</IfModule>
+```
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=pulsar-songbook-3a929.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=pulsar-songbook-3a929
+VITE_FIREBASE_STORAGE_BUCKET=pulsar-songbook-3a929.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=1065767108207
+VITE_FIREBASE_APP_ID=1:1065767108207:web:...
 ```
 
-**How to create:**
-1. cPanel → File Manager → `public_html/`
-2. Click "New File"
-3. Name: `.htaccess` (include the dot!)
-4. Right-click → "Edit"
-5. Paste content above
-6. Save
+These are client-side public values (they ship in every browser bundle), not
+secrets. If you lose `.env.local`, regenerate the values from the Firebase project:
 
-**Note:** This file should persist between deployments. Only recreate if deleted.
+```bash
+firebase apps:sdkconfig WEB --project pulsar-songbook-3a929
+```
+
+> **If `.env.local` is missing when you build, the deployed app loads to a blank
+> page** (Vite bakes `apiKey: undefined` and Firebase throws before React mounts).
+> `deploy.sh` guards against this and aborts the build if the config is absent.
+
+**Verify a build actually renders** (not just that files exist) before trusting a
+deploy — a headless render catches a blank page that HTTP 200 checks miss:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --dump-dom https://songbook.julianvirguez.com/ | grep -c "Pulsar Songbook"
+```
 
 ---
 
@@ -347,25 +363,22 @@ When you make changes to the app and want to deploy updates:
 - Test locally: `npm run dev`
 - Verify everything works: `npm run preview`
 
-### Step 2: Build New Version
+### Step 2: Build & Deploy
 
+**Recommended (one command):**
 ```bash
-npm run build
+site-deploy songbook
 ```
+This builds via `deploy.sh` (with the auth-bypass and Firebase-config guards) and
+FTPS-uploads `dist/` to the server.
 
-### Step 3: Upload to Bluehost
-
-**Simple method:**
-1. Open cPanel File Manager
-2. Navigate to `public_html/`
-3. Select ALL existing files (except `.htaccess`)
-4. Click "Delete"
-5. Upload new files from `dist/` folder
-
-**Better method (safer):**
-1. Upload new files from `dist/`
-2. Click "Yes" to overwrite existing files
-3. This preserves `.htaccess`
+**Manual fallback:**
+```bash
+bash deploy.sh
+```
+then upload the contents of `dist/` to `public_html/`, overwriting existing files.
+Since `.htaccess` now ships inside `dist/`, overwriting is safe — there's nothing
+to preserve by hand.
 
 ### Step 4: Clear Cache
 
@@ -543,7 +556,7 @@ After deployment, verify these features:
 
 ```
 public_html/
-├── .htaccess                 (ONE-TIME: Create manually)
+├── .htaccess                 (from dist/ — tracked at public/.htaccess)
 ├── index.html                (from dist/)
 ├── manifest.webmanifest      (from dist/)
 ├── sw.js                     (from dist/)
@@ -562,7 +575,7 @@ public_html/
 ```
 
 **Important:**
-- `.htaccess` - Create once, keep forever
+- `.htaccess` - ships from `dist/` on every deploy (tracked at `public/.htaccess`); don't hand-edit it on the server
 - Everything else - Overwrite with each deployment
 
 ---
@@ -632,7 +645,7 @@ npm run build
 
 - **Bluehost Support:** 1-888-401-4678
 - **Bluehost Knowledge Base:** https://my.bluehost.com/hosting/help
-- **Project Repository:** (Add your GitHub/GitLab URL here)
+- **Project Repository:** https://github.com/forcepulsar/PulsarSongbook (public)
 - **This Documentation:** `DEPLOYMENT.md`
 
 ---
@@ -656,11 +669,12 @@ Track your deployments here:
 ## Notes
 
 - Always test locally before deploying (`npm run preview`)
-- Keep `.htaccess` file - don't delete it
+- `.htaccess` is tracked in the repo (`public/.htaccess`) and ships with each build — don't hand-edit it on the server
+- `.env.local` (Firebase config) must exist before building, or the app deploys as a blank page
 - HTTPS is required for PWA functionality
 - Service worker caches everything - users get updates within 24 hours
 - IndexedDB stores all data locally - no backend needed
 
 ---
 
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-07-20

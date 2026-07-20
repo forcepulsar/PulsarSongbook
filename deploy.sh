@@ -34,6 +34,19 @@ if grep -qr "dev@localhost" dist/assets/*.js dist/assets/*.mjs 2>/dev/null; then
 fi
 echo "✅ Bundle verified — no dev auth bypass present"
 
+# Verify Firebase config was embedded. If .env.local is missing, Vite bakes
+# `apiKey:void 0` into the bundle and the app crashes to a blank page on load.
+if grep -qr "apiKey:void 0" dist/assets/*.js 2>/dev/null; then
+  echo ""
+  echo "❌ Firebase config missing from bundle (apiKey is undefined)."
+  echo "   The app would load to a BLANK PAGE. Do NOT deploy this build."
+  echo "   Cause: no .env.local with VITE_FIREBASE_* values at build time."
+  echo "   Fix:   firebase apps:sdkconfig WEB --project pulsar-songbook-3a929"
+  echo "          then create .env.local (see CLAUDE.md 'Firebase Configuration')."
+  exit 1
+fi
+echo "✅ Bundle verified — Firebase config present"
+
 echo ""
 echo "✅ Build complete! Files are in dist/"
 echo ""
