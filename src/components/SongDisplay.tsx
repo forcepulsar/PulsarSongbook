@@ -311,7 +311,7 @@ export default function SongDisplay() {
       )}
 
       {/* Fixed Control Bar - Always visible, solid background */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-600 shadow-2xl z-50">
+      <div data-testid="song-controls" className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-600 shadow-2xl z-50">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-center gap-3">
             {/* Playback Controls */}
@@ -404,6 +404,17 @@ export default function SongDisplay() {
               >
                 {isFullscreen ? '⛶ Exit' : '⛶ Full'}
               </button>
+
+              {/* Random Song - only here in fullscreen, where the header (and its 🎲) is covered */}
+              {isFullscreen && (
+                <button
+                  onClick={handleRandomSong}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                  title="Random Song (R)"
+                >
+                  🎲
+                </button>
+              )}
             </div>
 
             <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 hidden md:block"></div>

@@ -25,9 +25,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+// chordProStatus matters: the Random Song button only picks Done / In Progress songs
 const mockSongs = [
-  { id: 'song-1', title: 'Amazing Grace', artist: 'Traditional', language: 'English', difficulty: 'Easy' },
-  { id: 'song-2', title: 'Bohemian Rhapsody', artist: 'Queen', language: 'English', difficulty: 'Hard' },
+  { id: 'song-1', title: 'Amazing Grace', artist: 'Traditional', language: 'English', difficulty: 'Easy', chordProStatus: 'Done' },
+  { id: 'song-2', title: 'Bohemian Rhapsody', artist: 'Queen', language: 'English', difficulty: 'Hard', chordProStatus: 'Done' },
 ];
 
 describe('SongList navigation', () => {
