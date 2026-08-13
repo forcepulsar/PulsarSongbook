@@ -68,8 +68,11 @@ describe('SongList navigation', () => {
 
     await user.click(screen.getByText('🎲 Random Song'));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/song\/(song-1|song-2)$/)
+    // handleRandomSong dynamically imports recentSongs, so navigation lands a tick later
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/song\/(song-1|song-2)$/)
+      )
     );
   });
 });
