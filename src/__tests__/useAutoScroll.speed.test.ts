@@ -85,4 +85,18 @@ describe('useAutoScroll speed control', () => {
 
     expect(el.scrollTop).toBe(stoppedAt);
   });
+
+  it('tears the timer down on unmount', () => {
+    const { el, ref } = makeScrollContainer();
+    const { result, unmount } = renderHook(() => useAutoScroll({ containerRef: ref, speed: 1 }));
+
+    act(() => result.current.startScroll());
+    act(() => void vi.advanceTimersByTime(200));
+
+    unmount();
+    const unmountedAt = el.scrollTop;
+    act(() => void vi.advanceTimersByTime(2000));
+
+    expect(el.scrollTop).toBe(unmountedAt);
+  });
 });
