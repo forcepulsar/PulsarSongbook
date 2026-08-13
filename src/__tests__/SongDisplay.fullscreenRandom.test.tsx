@@ -94,6 +94,8 @@ describe('SongDisplay random button in fullscreen', () => {
 
     const controls = within(screen.getByTestId('song-controls'));
     expect(controls.getByTitle(RANDOM_TITLE)).toBeInTheDocument();
+    // The header copy is unmounted, so no covered-but-focusable duplicate remains
+    expect(screen.getAllByTitle(RANDOM_TITLE)).toHaveLength(1);
   });
 
   it('navigates to another song when the control bar random button is tapped', async () => {

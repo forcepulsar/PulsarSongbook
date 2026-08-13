@@ -256,11 +256,15 @@ export default function SongDisplay() {
               ✏️
             </Link>
           )}
-          <button onClick={handleRandomSong}
-            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-            title="Random Song (R)">
-            🎲
-          </button>
+          {/* Hidden in fullscreen: the content overlay covers this header, but the button
+              would stay in the tab order. The control bar carries 🎲 there instead. */}
+          {!isFullscreen && (
+            <button onClick={handleRandomSong}
+              className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              title="Random Song (R)">
+              🎲
+            </button>
+          )}
         </div>
       </div>
 
