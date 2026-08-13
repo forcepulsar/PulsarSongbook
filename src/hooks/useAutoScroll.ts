@@ -17,16 +17,23 @@ interface UseAutoScrollReturn {
   setScrollSpeed: (speed: number) => void;
 }
 
+// How long auto-scroll yields after the user scrolls by hand
+const MANUAL_PAUSE_MS = 1000;
+
 export function useAutoScroll({
   containerRef,
   speed = SCROLL.DEFAULT_SPEED,
 }: UseAutoScrollOptions): UseAutoScrollReturn {
   const [isScrolling, setIsScrolling] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(speed);
-  const intervalRef = useRef<number | null>(null);
-  const pauseTimeoutRef = useRef<number | null>(null);
-  const lastManualScrollRef = useRef<number>(0);
   const accumulatedScrollRef = useRef<number>(0); // Accumulate fractional scroll amounts
+  const pausedUntilRef = useRef<number>(0);
+
+  // Read by the ticker so a speed change takes effect without rebuilding the timer
+  const speedRef = useRef(scrollSpeed);
+  useEffect(() => {
+    speedRef.current = scrollSpeed;
+  }, [scrollSpeed]);
 
   // Check if we've reached the bottom
   const isAtBottom = useCallback(() => {
@@ -35,16 +42,8 @@ export function useAutoScroll({
     return scrollTop + clientHeight >= scrollHeight - 10;
   }, [containerRef]);
 
-  // Stop scrolling
+  // Stop scrolling — the ticker effect below owns the timer and tears it down
   const stopScroll = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (pauseTimeoutRef.current) {
-      clearTimeout(pauseTimeoutRef.current);
-      pauseTimeoutRef.current = null;
-    }
     setIsScrolling(false);
   }, []);
 
@@ -57,31 +56,11 @@ export function useAutoScroll({
       containerRef.current.scrollTop = 0;
     }
 
-    // Reset accumulated scroll
     accumulatedScrollRef.current = 0;
+    pausedUntilRef.current = 0;
 
     setIsScrolling(true);
-
-    intervalRef.current = window.setInterval(() => {
-      if (!containerRef.current) return;
-
-      // Stop if we've reached the bottom
-      if (isAtBottom()) {
-        stopScroll();
-        return;
-      }
-
-      // Accumulate fractional scroll amounts
-      accumulatedScrollRef.current += scrollSpeed;
-
-      // Only scroll when we have at least 1 pixel
-      if (accumulatedScrollRef.current >= 1) {
-        const pixelsToScroll = Math.floor(accumulatedScrollRef.current);
-        containerRef.current.scrollTop += pixelsToScroll;
-        accumulatedScrollRef.current -= pixelsToScroll;
-      }
-    }, SCROLL.INTERVAL_MS);
-  }, [containerRef, scrollSpeed, isAtBottom, stopScroll]);
+  }, [containerRef, isAtBottom]);
 
   // Toggle scroll
   const toggleScroll = useCallback(() => {
@@ -101,89 +80,53 @@ export function useAutoScroll({
     setScrollSpeed((prev) => Math.max(prev - SCROLL.SPEED_STEP, SCROLL.MIN_SPEED));
   }, []);
 
-  // Handle manual scroll detection
+  // Manual scroll yields for a moment. Only wheel/touchmove fire here — programmatic
+  // scrollTop changes don't — so no need to distinguish auto-scroll from the user.
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !isScrolling) return;
 
-    const handleScroll = () => {
-      const now = Date.now();
-      const timeSinceLastManual = now - lastManualScrollRef.current;
-
-      // If scrolling and user manually scrolled (not from auto-scroll), pause
-      if (isScrolling && timeSinceLastManual > 100) {
-        lastManualScrollRef.current = now;
-
-        // Pause for 1 second
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-
-        // Resume after 1 second
-        if (pauseTimeoutRef.current) {
-          clearTimeout(pauseTimeoutRef.current);
-        }
-
-        pauseTimeoutRef.current = window.setTimeout(() => {
-          if (isScrolling) {
-            startScroll();
-          }
-        }, 1000);
-      }
+    const handleManualScroll = () => {
+      pausedUntilRef.current = Date.now() + MANUAL_PAUSE_MS;
     };
 
-    // Detect touch/mouse scroll
-    container.addEventListener('wheel', handleScroll);
-    container.addEventListener('touchmove', handleScroll);
+    container.addEventListener('wheel', handleManualScroll);
+    container.addEventListener('touchmove', handleManualScroll);
 
     return () => {
-      container.removeEventListener('wheel', handleScroll);
-      container.removeEventListener('touchmove', handleScroll);
+      container.removeEventListener('wheel', handleManualScroll);
+      container.removeEventListener('touchmove', handleManualScroll);
     };
-  }, [containerRef, isScrolling, startScroll]);
+  }, [containerRef, isScrolling]);
 
-  // Restart scrolling when speed changes while scrolling
+  // The one and only owner of the scroll timer. Speed is read from a ref per tick,
+  // so changing speed never rebuilds the timer or discards accumulated pixels.
   useEffect(() => {
-    if (isScrolling) {
-      // Stop current scroll
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    if (!isScrolling) return;
+
+    const intervalId = window.setInterval(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (Date.now() < pausedUntilRef.current) return;
+
+      if (isAtBottom()) {
+        setIsScrolling(false);
+        return;
       }
 
-      // Reset accumulated scroll when speed changes
-      accumulatedScrollRef.current = 0;
+      accumulatedScrollRef.current += speedRef.current;
 
-      // Restart with new speed
-      intervalRef.current = window.setInterval(() => {
-        if (!containerRef.current) return;
+      // Only scroll when we have at least 1 pixel
+      if (accumulatedScrollRef.current >= 1) {
+        const pixelsToScroll = Math.floor(accumulatedScrollRef.current);
+        container.scrollTop += pixelsToScroll;
+        accumulatedScrollRef.current -= pixelsToScroll;
+      }
+    }, SCROLL.INTERVAL_MS);
 
-        // Stop if we've reached the bottom
-        if (isAtBottom()) {
-          stopScroll();
-          return;
-        }
-
-        // Accumulate fractional scroll amounts
-        accumulatedScrollRef.current += scrollSpeed;
-
-        // Only scroll when we have at least 1 pixel
-        if (accumulatedScrollRef.current >= 1) {
-          const pixelsToScroll = Math.floor(accumulatedScrollRef.current);
-          containerRef.current.scrollTop += pixelsToScroll;
-          accumulatedScrollRef.current -= pixelsToScroll;
-        }
-      }, SCROLL.INTERVAL_MS);
-    }
-  }, [scrollSpeed, isScrolling, containerRef, isAtBottom, stopScroll]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopScroll();
-    };
-  }, [stopScroll]);
+    return () => window.clearInterval(intervalId);
+  }, [isScrolling, containerRef, isAtBottom]);
 
   return {
     isScrolling,
