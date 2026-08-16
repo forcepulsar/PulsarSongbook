@@ -17,6 +17,7 @@ export default function SongDisplay() {
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const [fontSize, setFontSize] = useState(FONT.DEFAULT_SIZE);
   const [showChords, setShowChords] = useState(true);
@@ -36,7 +37,7 @@ export default function SongDisplay() {
   }, [id]);
 
   // Initialize hooks
-  const { isFullscreen, toggleFullscreen } = useFullscreen();
+  const { isFullscreen, toggleFullscreen } = useFullscreen(pageRef);
   const {
     isScrolling,
     scrollSpeed,
@@ -160,7 +161,6 @@ export default function SongDisplay() {
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    isFullscreen,
     onToggleFullscreen: toggleFullscreen,
     onToggleAutoScroll: toggleScroll,
     onIncreaseFontSize: increaseFontSize,
@@ -212,10 +212,9 @@ export default function SongDisplay() {
   const chordifyUrl = `https://chordify.net/search/${encodeURIComponent(chordifyQuery)}`;
 
   return (
-    <div className="max-w-6xl mx-auto pb-28">
-      {/* Single-row header: back | links | actions. Hidden in fullscreen — the overlay
-          covers it, and left visible it keeps a row of unreachable tab stops. */}
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 mb-4 ${isFullscreen ? 'hidden' : ''}`}>
+    <div ref={pageRef} className="max-w-6xl mx-auto pb-28">
+      {/* Single-row header: back | links | actions */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 mb-4">
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(-1)}
