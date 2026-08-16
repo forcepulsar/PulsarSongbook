@@ -24,6 +24,21 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
     if (!enabled) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Leave browser and OS commands alone (Cmd+F find, Cmd+R reload, ...)
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      // Escape always exits fullscreen, even from a focused input. Chrome behind the
+      // overlay can still take focus, and this is the only keyboard way back out.
+      if (key === 'escape' && shortcuts.isFullscreen && shortcuts.onToggleFullscreen) {
+        event.preventDefault();
+        shortcuts.onToggleFullscreen();
+        return;
+      }
+
       // Don't trigger shortcuts when typing in input fields
       const target = event.target as HTMLElement;
       if (
@@ -34,8 +49,6 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
       ) {
         return;
       }
-
-      const key = event.key.toLowerCase();
 
       // F - Toggle fullscreen
       if (key === 'f' && shortcuts.onToggleFullscreen) {
@@ -121,11 +134,6 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
         shortcuts.onFocusSearch();
       }
 
-      // Escape - Exit fullscreen. The browser no longer does this for us.
-      if (key === 'escape' && shortcuts.isFullscreen && shortcuts.onToggleFullscreen) {
-        event.preventDefault();
-        shortcuts.onToggleFullscreen();
-      }
     };
 
     document.addEventListener('keydown', handleKeyDown);

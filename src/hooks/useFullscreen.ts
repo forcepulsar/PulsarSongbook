@@ -23,15 +23,19 @@ export function useFullscreen(): UseFullscreenReturn {
   const exitFullscreen = useCallback(() => setIsFullscreen(false), []);
   const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
 
-  // Keep the page behind the overlay from scrolling or rubber-banding
+  // Keep the page behind the overlay from scrolling, and flag the document so the app
+  // header can be hidden. Without that the header stays mounted under the overlay:
+  // invisible but still tabbable, and "/" would focus its search box and trap the user.
   useEffect(() => {
     if (!isFullscreen) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('fullscreen-active');
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.body.classList.remove('fullscreen-active');
     };
   }, [isFullscreen]);
 

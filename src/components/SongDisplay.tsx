@@ -213,8 +213,9 @@ export default function SongDisplay() {
 
   return (
     <div className="max-w-6xl mx-auto pb-28">
-      {/* Single-row header: back | links | actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 mb-4">
+      {/* Single-row header: back | links | actions. Hidden in fullscreen — the overlay
+          covers it, and left visible it keeps a row of unreachable tab stops. */}
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 mb-4 ${isFullscreen ? 'hidden' : ''}`}>
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(-1)}
