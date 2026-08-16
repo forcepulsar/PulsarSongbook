@@ -7,13 +7,52 @@ interface UseFullscreenReturn {
   exitFullscreen: () => void;
 }
 
+// Vendor-prefixed shapes of the Fullscreen API, still needed for older WebKit
+type PrefixedDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  mozFullScreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => void | Promise<void>;
+  mozCancelFullScreen?: () => void | Promise<void>;
+  msExitFullscreen?: () => void | Promise<void>;
+};
+
+type PrefixedElement = HTMLElement & {
+  webkitRequestFullscreen?: () => void | Promise<void>;
+  mozRequestFullScreen?: () => void | Promise<void>;
+  msRequestFullscreen?: () => void | Promise<void>;
+};
+
+// Read across prefixes: WebKit fires its vendor event while fullscreenElement is
+// undefined, which would otherwise leave isFullscreen stuck at false.
+function getFullscreenElement(): Element | null {
+  const doc = document as PrefixedDocument;
+  return (
+    doc.fullscreenElement ??
+    doc.webkitFullscreenElement ??
+    doc.mozFullScreenElement ??
+    doc.msFullscreenElement ??
+    null
+  );
+}
+
+// A refused request (no user gesture, iframe without allow="fullscreen", iPhone Safari)
+// rejects. Report it rather than leaving an unhandled rejection.
+function settle(result: void | Promise<void>, action: string): void {
+  if (result && typeof (result as Promise<void>).catch === 'function') {
+    (result as Promise<void>).catch((error: unknown) => {
+      console.warn(`[useFullscreen] ${action} was refused:`, error);
+    });
+  }
+}
+
 export function useFullscreen(elementRef?: React.RefObject<HTMLElement | null>): UseFullscreenReturn {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Update fullscreen state
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(!!getFullscreenElement());
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -31,29 +70,31 @@ export function useFullscreen(elementRef?: React.RefObject<HTMLElement | null>):
 
   // Enter fullscreen
   const enterFullscreen = useCallback(() => {
-    const element = elementRef?.current || document.documentElement;
+    const element = (elementRef?.current || document.documentElement) as PrefixedElement;
 
     if (element.requestFullscreen) {
-      element.requestFullscreen();
-    } else if ((element as any).webkitRequestFullscreen) {
-      (element as any).webkitRequestFullscreen();
-    } else if ((element as any).mozRequestFullScreen) {
-      (element as any).mozRequestFullScreen();
-    } else if ((element as any).msRequestFullscreen) {
-      (element as any).msRequestFullscreen();
+      settle(element.requestFullscreen(), 'requestFullscreen');
+    } else if (element.webkitRequestFullscreen) {
+      settle(element.webkitRequestFullscreen(), 'webkitRequestFullscreen');
+    } else if (element.mozRequestFullScreen) {
+      settle(element.mozRequestFullScreen(), 'mozRequestFullScreen');
+    } else if (element.msRequestFullscreen) {
+      settle(element.msRequestFullscreen(), 'msRequestFullscreen');
     }
   }, [elementRef]);
 
   // Exit fullscreen
   const exitFullscreen = useCallback(() => {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if ((document as any).webkitExitFullscreen) {
-      (document as any).webkitExitFullscreen();
-    } else if ((document as any).mozCancelFullScreen) {
-      (document as any).mozCancelFullScreen();
-    } else if ((document as any).msExitFullscreen) {
-      (document as any).msExitFullscreen();
+    const doc = document as PrefixedDocument;
+
+    if (doc.exitFullscreen) {
+      settle(doc.exitFullscreen(), 'exitFullscreen');
+    } else if (doc.webkitExitFullscreen) {
+      settle(doc.webkitExitFullscreen(), 'webkitExitFullscreen');
+    } else if (doc.mozCancelFullScreen) {
+      settle(doc.mozCancelFullScreen(), 'mozCancelFullScreen');
+    } else if (doc.msExitFullscreen) {
+      settle(doc.msExitFullscreen(), 'msExitFullscreen');
     }
   }, []);
 
