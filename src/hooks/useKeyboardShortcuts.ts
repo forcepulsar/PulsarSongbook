@@ -41,12 +41,10 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
 
       const key = event.key.toLowerCase();
 
-      // F - Toggle fullscreen (requires Shift if not in fullscreen)
+      // F - Toggle fullscreen, in both directions
       if (key === 'f' && shortcuts.onToggleFullscreen) {
-        if (!document.fullscreenElement || event.shiftKey) {
-          event.preventDefault();
-          shortcuts.onToggleFullscreen();
-        }
+        event.preventDefault();
+        shortcuts.onToggleFullscreen();
       }
 
       // Space - Toggle auto-scroll

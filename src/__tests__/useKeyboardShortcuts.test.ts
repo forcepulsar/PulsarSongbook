@@ -71,6 +71,29 @@ describe('useKeyboardShortcuts', () => {
     expect(onToggleFullscreen).toHaveBeenCalledOnce();
   });
 
+  it('toggles fullscreen with plain F in both directions', () => {
+    const onToggleFullscreen = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onToggleFullscreen }));
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true }));
+    expect(onToggleFullscreen).toHaveBeenCalledOnce();
+
+    // Already fullscreen: F must exit, not sit there doing nothing
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: document.body,
+      configurable: true,
+      writable: true,
+    });
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true }));
+    expect(onToggleFullscreen).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: null,
+      configurable: true,
+      writable: true,
+    });
+  });
+
   it('fires multiple different shortcuts correctly', () => {
     const onToggleChords = vi.fn();
     const onToggleAutoScroll = vi.fn();
