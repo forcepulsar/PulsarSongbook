@@ -48,6 +48,29 @@ describe('useKeyboardShortcuts', () => {
     expect(onToggleChords).not.toHaveBeenCalled();
   });
 
+  it('ignores shortcuts pressed with a modifier so browser commands still work', () => {
+    const onRandomSong = vi.fn();
+    const onOpenSpotify = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onRandomSong, onOpenSpotify }));
+
+    // Cmd/Ctrl+R = reload, Cmd+S = save page
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', metaKey: true, bubbles: true }));
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', ctrlKey: true, bubbles: true }));
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 's', metaKey: true, bubbles: true }));
+
+    expect(onRandomSong).not.toHaveBeenCalled();
+    expect(onOpenSpotify).not.toHaveBeenCalled();
+  });
+
+  it('still allows Shift+F, which exits fullscreen', () => {
+    const onToggleFullscreen = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onToggleFullscreen }));
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', shiftKey: true, bubbles: true }));
+
+    expect(onToggleFullscreen).toHaveBeenCalledOnce();
+  });
+
   it('fires multiple different shortcuts correctly', () => {
     const onToggleChords = vi.fn();
     const onToggleAutoScroll = vi.fn();

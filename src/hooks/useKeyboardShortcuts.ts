@@ -22,6 +22,12 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
     if (!enabled) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Leave browser and OS commands alone (Cmd+R reload, Cmd+F find, Cmd+S save...).
+      // Shift is not included: Shift+F exits fullscreen.
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
       // Don't trigger shortcuts when typing in input fields
       const target = event.target as HTMLElement;
       if (
