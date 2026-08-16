@@ -187,3 +187,10 @@
     color: #fde047 !important;
   }
 }
+
+/* CSS fullscreen: the song overlay covers the viewport, so the app header must be
+   removed outright — left mounted it stays tabbable and "/" focuses its search box
+   behind the overlay, trapping keyboard users. */
+body.fullscreen-active .app-header {
+  display: none;
+}

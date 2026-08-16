@@ -48,6 +48,67 @@ describe('useKeyboardShortcuts', () => {
     expect(onToggleChords).not.toHaveBeenCalled();
   });
 
+  it('exits fullscreen on Escape when fullscreen is on', () => {
+    const onToggleFullscreen = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onToggleFullscreen, isFullscreen: true }));
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(onToggleFullscreen).toHaveBeenCalledOnce();
+  });
+
+  it('ignores Escape when not fullscreen', () => {
+    const onToggleFullscreen = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onToggleFullscreen, isFullscreen: false }));
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(onToggleFullscreen).not.toHaveBeenCalled();
+  });
+
+  it('toggles fullscreen with F in both directions', () => {
+    const onToggleFullscreen = vi.fn();
+    const { rerender } = renderHook(
+      ({ isFullscreen }) => useKeyboardShortcuts({ onToggleFullscreen, isFullscreen }),
+      { initialProps: { isFullscreen: false } }
+    );
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true }));
+    expect(onToggleFullscreen).toHaveBeenCalledOnce();
+
+    rerender({ isFullscreen: true });
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true }));
+    expect(onToggleFullscreen).toHaveBeenCalledTimes(2);
+  });
+
+  it('still exits fullscreen on Escape when focus is stuck in an input', () => {
+    // The app header sits behind the fullscreen overlay; "/" can put focus in its
+    // search box. Escape must remain an escape hatch or the user is trapped.
+    const onToggleFullscreen = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onToggleFullscreen, isFullscreen: true }));
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.body.removeChild(input);
+
+    expect(onToggleFullscreen).toHaveBeenCalledOnce();
+  });
+
+  it('ignores shortcuts pressed with a modifier so browser commands still work', () => {
+    const onToggleFullscreen = vi.fn();
+    const onRandomSong = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onToggleFullscreen, onRandomSong }));
+
+    // Cmd/Ctrl+F = browser find, Cmd/Ctrl+R = reload
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true }));
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }));
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', metaKey: true, bubbles: true }));
+
+    expect(onToggleFullscreen).not.toHaveBeenCalled();
+    expect(onRandomSong).not.toHaveBeenCalled();
+  });
+
   it('fires multiple different shortcuts correctly', () => {
     const onToggleChords = vi.fn();
     const onToggleAutoScroll = vi.fn();
