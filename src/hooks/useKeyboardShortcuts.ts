@@ -15,6 +15,8 @@ export interface KeyboardShortcuts {
   onOpenSpotify?: () => void;
   onOpenChordify?: () => void;
   onEditSong?: () => void;
+  /** Fullscreen is CSS-based, so the hook can't read it off the document */
+  isFullscreen?: boolean;
 }
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = true): void {
@@ -35,12 +37,10 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
 
       const key = event.key.toLowerCase();
 
-      // F - Toggle fullscreen (requires Shift if not in fullscreen)
+      // F - Toggle fullscreen
       if (key === 'f' && shortcuts.onToggleFullscreen) {
-        if (!document.fullscreenElement || event.shiftKey) {
-          event.preventDefault();
-          shortcuts.onToggleFullscreen();
-        }
+        event.preventDefault();
+        shortcuts.onToggleFullscreen();
       }
 
       // Space - Toggle auto-scroll
@@ -121,8 +121,8 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
         shortcuts.onFocusSearch();
       }
 
-      // Escape - Exit fullscreen
-      if (key === 'escape' && document.fullscreenElement && shortcuts.onToggleFullscreen) {
+      // Escape - Exit fullscreen. The browser no longer does this for us.
+      if (key === 'escape' && shortcuts.isFullscreen && shortcuts.onToggleFullscreen) {
         event.preventDefault();
         shortcuts.onToggleFullscreen();
       }
