@@ -15,8 +15,6 @@ export interface KeyboardShortcuts {
   onOpenSpotify?: () => void;
   onOpenChordify?: () => void;
   onEditSong?: () => void;
-  /** Fullscreen is CSS-based, so the hook can't read it off the document */
-  isFullscreen?: boolean;
 }
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = true): void {
@@ -24,18 +22,9 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
     if (!enabled) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Leave browser and OS commands alone (Cmd+F find, Cmd+R reload, ...)
+      // Leave browser and OS commands alone (Cmd+R reload, Cmd+F find, Cmd+S save...).
+      // Shift is not included: Shift+F exits fullscreen.
       if (event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
-
-      const key = event.key.toLowerCase();
-
-      // Escape always exits fullscreen, even from a focused input. Chrome behind the
-      // overlay can still take focus, and this is the only keyboard way back out.
-      if (key === 'escape' && shortcuts.isFullscreen && shortcuts.onToggleFullscreen) {
-        event.preventDefault();
-        shortcuts.onToggleFullscreen();
         return;
       }
 
@@ -50,10 +39,14 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
         return;
       }
 
-      // F - Toggle fullscreen
+      const key = event.key.toLowerCase();
+
+      // F - Toggle fullscreen (requires Shift if not in fullscreen)
       if (key === 'f' && shortcuts.onToggleFullscreen) {
-        event.preventDefault();
-        shortcuts.onToggleFullscreen();
+        if (!document.fullscreenElement || event.shiftKey) {
+          event.preventDefault();
+          shortcuts.onToggleFullscreen();
+        }
       }
 
       // Space - Toggle auto-scroll
@@ -134,6 +127,11 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts, enabled = tru
         shortcuts.onFocusSearch();
       }
 
+      // Escape - Exit fullscreen
+      if (key === 'escape' && document.fullscreenElement && shortcuts.onToggleFullscreen) {
+        event.preventDefault();
+        shortcuts.onToggleFullscreen();
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);

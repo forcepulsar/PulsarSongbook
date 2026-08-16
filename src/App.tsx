@@ -45,7 +45,7 @@ function App() {
         <OfflineIndicator />
 
         {/* Header */}
-        <header className="app-header bg-red-600 dark:bg-red-700 text-white shadow-lg sticky top-0 z-40">
+        <header className="bg-red-600 dark:bg-red-700 text-white shadow-lg sticky top-0 z-40">
           <div className="container mx-auto px-4 py-3">
             {/* Desktop Header */}
             <div className="hidden md:flex items-center gap-4">
