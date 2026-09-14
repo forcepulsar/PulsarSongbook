@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "pulsar-songbook",
+  // Must stay "pulsarsongbook" (no hyphen) to match the Worker that Workers
+  // Builds created from the repo name. With a hyphen, CI logs a name mismatch
+  // and overrides it, and a local `wrangler deploy` would create a SECOND,
+  // separate Worker instead of updating the live one.
+  "name": "pulsarsongbook",
   "compatibility_date": "2026-09-14",
   "assets": {
     "directory": "./dist",
