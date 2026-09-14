@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:cf": "node scripts/check-build-env.mjs && npm run build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.3.3",
@@ -55,6 +56,7 @@
     "vite": "^8.0.16",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18",
-    "workbox-window": "^7.4.0"
+    "workbox-window": "^7.4.0",
+    "wrangler": "^4.131.2"
   }
 }

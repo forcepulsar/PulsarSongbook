@@ -1,0 +1,41 @@
+# Ported from public/.htaccess for Cloudflare Workers static assets.
+# Vite copies this file into dist/; Workers parses it and never serves it.
+#
+# Deliberately NOT ported from .htaccess:
+#   - HTTP->HTTPS redirect: zone setting "Always Use HTTPS" (see DEPLOYMENT.md).
+#   - SPA fallback: wrangler.jsonc not_found_handling handles it. _redirects
+#     can do 200-proxy rewrites, but wrangler rejects splat-to-index rules as
+#     an infinite loop, so not_found_handling is the only workable route.
+#   - gzip/DEFLATE: Cloudflare compresses (Brotli/gzip) automatically.
+#
+# NOTE ON CACHING: do NOT add a long max-age/immutable rule for /assets/*.
+# not_found_handling returns index.html with 200 for ANY unmatched path,
+# including .js paths. After a deploy, an open tab that lazy-loads a now-
+# deleted chunk (SongEdit, SetListEdit, DataExport are all code-split) gets
+# HTML at that URL -- and `immutable` would pin that HTML in the browser for
+# a year, bricking the route until the user clears site data. Apache avoided
+# this only because ExpiresByType keyed off the response MIME type.
+# The Workers default (max-age=0, must-revalidate + strong ETag) is correct
+# here: workbox already precaches every /assets/* file into Cache Storage,
+# so repeat visits don't hit the network anyway.
+
+# CORS was: <FilesMatch "\.(ttf|otf|eot|woff|woff2|svg)$"> Header set A-C-A-O "*"
+/assets/*
+  Access-Control-Allow-Origin: *
+
+/icons/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=86400
+
+# PWA plumbing must never be cached long, or clients pin to a stale build.
+# (Apache's ExpiresByType application/javascript gave sw.js a 1-month TTL --
+# a latent bug this fixes.) index.html and /legacy/* stay on the Workers
+# default, which is already revalidate-always.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/registerSW.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate

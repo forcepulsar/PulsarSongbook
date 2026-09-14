@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pulsar-songbook",
+  "compatibility_date": "2026-09-14",
+  "assets": {
+    "directory": "./dist",
+    // BrowserRouter (src/App.tsx) owns /song/:id, /setlist/:id/edit, etc.
+    // Unknown paths must return index.html with 200 or every deep-link
+    // refresh 404s. Real files still win, so /legacy/ keeps working.
+    "not_found_handling": "single-page-application"
+  }
+}
