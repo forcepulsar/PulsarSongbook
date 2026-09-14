@@ -99,16 +99,27 @@ JS URL — for a year, if `immutable` were set. See the note in `public/_headers
    `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder`.
 7. Re-test end to end including Google login (the real domain stays authorized).
 
-### Post-cutover follow-ups
+### Routing is owned by wrangler.jsonc, not the dashboard
 
-- Set `"workers_dev": false` in `wrangler.jsonc` to retire the `workers.dev`
-  URL. It is a second live origin with its own service-worker scope and
-  IndexedDB, and Firebase auth is broken there. Left enabled during migration
-  only because cutover verification needs it.
-- Optionally pin the custom domain in config with
-  `"routes": [{ "pattern": "songbook.julianvirguez.com", "custom_domain": true }]`.
-  Add this *after* cutover — while the Bluehost A record still exists,
-  `wrangler deploy` fails trying to attach the domain.
+Cutover completed **2026-09-14**. `workers_dev` and `preview_urls` are now
+`false`, and the custom domain is pinned in `wrangler.jsonc`.
+
+⚠️ **Do not add a custom domain in the dashboard alone.** In CI (non-TTY)
+wrangler deploys with `override_scope` / `override_existing_origin` set, which
+makes the config file authoritative for this Worker's custom domains. A domain
+added only in the dashboard can be **silently dropped** by a later CI deploy.
+Add it to the `routes` array in `wrangler.jsonc` instead.
+
+For the same reason `workers_dev: false` is enough to retire the
+`workers.dev` URL — the next deploy disables the subdomain route. No dashboard
+step is needed. `preview_urls: false` closes the matching versioned preview
+hostnames; Workers Builds preview branches still build, the preview link just
+does not route.
+
+Note on failure mode: triggers are applied *after* the new version is uploaded
+and activated. If the trigger step fails you get a red build, but the new code
+is already live on the custom domain — it does **not** roll back to the previous
+version.
 
 ### Rollback
 

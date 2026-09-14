@@ -6,6 +6,24 @@
   // separate Worker instead of updating the live one.
   "name": "pulsarsongbook",
   "compatibility_date": "2026-09-14",
+  // Retire the workers.dev URL now that the custom domain is live. It was a
+  // second public origin with its own service-worker scope and IndexedDB, and
+  // Firebase auth is not authorised there. Songs are world-readable via
+  // firestore.rules, so it served a working, indexable duplicate of the
+  // library. preview_urls defaults to the value of workers_dev; set explicitly
+  // so a future default change cannot quietly re-expose it.
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // Pin the custom domain in config rather than leaving it dashboard-only, so
+  // config matches live routing and wrangler has no reason to change it.
+  "routes": [
+    {
+      "pattern": "songbook.julianvirguez.com",
+      "custom_domain": true
+    }
+  ],
+
   "assets": {
     "directory": "./dist",
     // BrowserRouter (src/App.tsx) owns /song/:id, /setlist/:id/edit, etc.
