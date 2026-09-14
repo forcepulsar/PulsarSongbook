@@ -1,8 +1,14 @@
 # Pulsar Songbook - Deployment Guide
 
-This guide explains how to deploy the Pulsar Songbook PWA to Bluehost hosting.
+This guide explains how to deploy the Pulsar Songbook PWA.
+
+**Hosting is moving to Cloudflare Workers** ahead of the Bluehost renewal in
+November 2026. See [Cloudflare Workers Hosting](#cloudflare-workers-hosting) for
+the live setup. The Bluehost/`site-deploy` instructions below remain valid as a
+fallback until the account is cancelled.
 
 ## Table of Contents
+- [Cloudflare Workers Hosting](#cloudflare-workers-hosting)
 - [Automated Deployment (Recommended)](#automated-deployment-recommended)
 - [Manual Deployment Steps](#manual-deployment-steps)
 - [Legacy Version for iOS 12](#legacy-version-for-ios-12)
@@ -11,6 +17,102 @@ This guide explains how to deploy the Pulsar Songbook PWA to Bluehost hosting.
 - [Regular Updates](#regular-updates)
 - [Troubleshooting](#troubleshooting)
 - [Testing Checklist](#testing-checklist)
+
+---
+
+## Cloudflare Workers Hosting
+
+`songbook.julianvirguez.com` is served by **Workers static assets** (not the
+legacy Pages product). The repo config is `wrangler.jsonc`; the deploy itself is
+run by Cloudflare Workers Builds on every push to `main`.
+
+### Worker settings (dashboard)
+
+Compute → Workers & Pages → the `pulsar-songbook` Worker:
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build:cf` |
+| Deploy command | `npx wrangler deploy` |
+| Production branch | `main` |
+
+### Required build variables
+
+⚠️ **Without these the build still exits 0 and the site loads to a blank page.**
+Vite inlines `VITE_FIREBASE_*` at build time; Cloudflare's builder has no
+`.env.local`, so a missing var bakes `undefined` into the bundle and Firebase
+throws before React mounts.
+
+Set all six under **Settings → Build → Variables and Secrets**:
+
+```
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
+
+`npm run build:cf` runs `scripts/check-build-env.mjs` first, which fails the
+build loudly if any are missing in CI (rather than shipping a blank page). These
+are Firebase *web* config values — public by design, not secrets.
+
+### Routing
+
+`not_found_handling: "single-page-application"` serves `index.html` with `200`
+for unmatched paths, which is required for `BrowserRouter` deep links
+(`/song/:id`, `/setlist/:id/edit`). Real files take precedence, so the iOS 12
+app at `/legacy/` is unaffected.
+
+**Do not add a long `max-age`/`immutable` rule for `/assets/*` in `_headers`.**
+SPA fallback returns HTML for *any* unmatched path including `.js`, so after a
+deploy an open tab requesting a deleted code-split chunk would cache HTML at a
+JS URL — for a year, if `immutable` were set. See the note in `public/_headers`.
+
+### Zone settings
+
+- **SSL/TLS → Edge Certificates → Always Use HTTPS: ON.** Required for PWA and
+  service-worker registration. This replaces the Apache `R=301` rule in
+  `public/.htaccess`, which Cloudflare does not read.
+
+### Cutover checklist
+
+1. Merge to `main` so `wrangler.jsonc` exists, and let the build deploy.
+2. Verify on `https://<worker>.<subdomain>.workers.dev` — homepage, deep links,
+   `/legacy/`, assets. Google login will **fail** here (hostname is not in the
+   Firebase authorized-domains list); that is expected.
+3. DNS → delete the `songbook` A record → `162.241.24.233`. Leave all other
+   records alone.
+4. Worker → Domains → Add Domain → `songbook.julianvirguez.com`. Cloudflare
+   refuses while the old A record exists, so do 3 and 4 back to back.
+5. **Caching → Purge Everything.** The zone may hold `/assets/*` cached from
+   Bluehost under Apache's 1-month `Expires`, which would mix two builds.
+6. Verify *who* served the response, not just that it was a 200:
+   ```bash
+   curl -sI https://songbook.julianvirguez.com/ | grep -iE "^server|^cf-ray"
+   curl -s https://songbook.julianvirguez.com/cdn-cgi/trace | grep -E "^(colo|loc)="
+   ```
+   Want `server: cloudflare`, a `cf-ray` ending `-SYD`, `colo=SYD`. Seeing
+   `server: Apache` means stale local DNS:
+   `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder`.
+7. Re-test end to end including Google login (the real domain stays authorized).
+
+### Post-cutover follow-ups
+
+- Set `"workers_dev": false` in `wrangler.jsonc` to retire the `workers.dev`
+  URL. It is a second live origin with its own service-worker scope and
+  IndexedDB, and Firebase auth is broken there. Left enabled during migration
+  only because cutover verification needs it.
+- Optionally pin the custom domain in config with
+  `"routes": [{ "pattern": "songbook.julianvirguez.com", "custom_domain": true }]`.
+  Add this *after* cutover — while the Bluehost A record still exists,
+  `wrangler deploy` fails trying to attach the domain.
+
+### Rollback
+
+Delete the custom domain in Cloudflare and re-create the A record
+→ `162.241.24.233`, DNS only. Bluehost is untouched and still serving.
 
 ---
 

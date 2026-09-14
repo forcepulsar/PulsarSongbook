@@ -6,9 +6,11 @@
 // before React mounts -> BLANK PAGE. Verified: building with .env.local absent
 // succeeds but emits no real config into dist/assets/.
 //
-// Reads process.env only, so it works both locally (Vite loads .env.local into
-// the build, but npm exposes nothing here) and in CI. Skips when no CI-style
-// env is present so local `npm run build` is unaffected.
+// Reads process.env only. Locally npm exposes nothing here (Vite loads
+// .env.local itself), so an all-empty env is treated as a local build. In CI
+// that same all-empty case is FATAL -- forgetting to add the vars in the
+// Cloudflare dashboard is the single most likely mistake, and it must not pass.
+// CI is detected via the markers Workers Builds injects.
 
 const REQUIRED = [
   'VITE_FIREBASE_API_KEY',
@@ -27,9 +29,15 @@ if (process.env.VITE_DEV_BYPASS_AUTH === 'true') {
 
 const missing = REQUIRED.filter((k) => !process.env[k]?.trim());
 
-if (missing.length === REQUIRED.length) {
-  // Nothing set at all: almost certainly a local build where Vite will read
-  // .env.local itself. deploy.sh covers that path.
+const inCI = Boolean(
+  process.env.WORKERS_CI ||
+    process.env.WORKERS_CI_BUILD_UUID ||
+    process.env.WORKERS_CI_COMMIT_SHA ||
+    process.env.CI,
+);
+
+if (missing.length === REQUIRED.length && !inCI) {
+  // Local build: Vite will read .env.local itself, and deploy.sh checks it.
   console.log('ℹ️  No VITE_FIREBASE_* in process.env - assuming local build via .env.local.');
   process.exit(0);
 }
@@ -38,6 +46,7 @@ if (missing.length > 0) {
   console.error(`❌ Firebase config incomplete. Missing/empty:\n   ${missing.join('\n   ')}`);
   console.error('   A partial config still builds, then loads to a BLANK PAGE.');
   console.error('   Set all 6 VITE_FIREBASE_* vars in the build environment.');
+  if (inCI) console.error('   (Cloudflare: Worker -> Settings -> Build -> Variables and Secrets.)');
   process.exit(1);
 }
 
