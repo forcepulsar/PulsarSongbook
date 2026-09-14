@@ -28,13 +28,14 @@ run by Cloudflare Workers Builds on every push to `main`.
 
 ### Worker settings (dashboard)
 
-Compute → Workers & Pages → the `pulsar-songbook` Worker:
+Compute → Workers & Pages → the `pulsarsongbook` Worker
+(`https://pulsarsongbook.pulsarlight.workers.dev`):
 
-| Setting | Value |
-|---|---|
-| Build command | `npm run build:cf` |
-| Deploy command | `npx wrangler deploy` |
-| Production branch | `main` |
+| Setting | Value | Notes |
+|---|---|---|
+| Build command | `npm run build:cf` | ⚠️ not `npm run build` — that skips the Firebase config guard and can deploy a blank page |
+| Deploy command | `npx wrangler deploy` | |
+| Production branch | `main` | |
 
 ### Required build variables
 
