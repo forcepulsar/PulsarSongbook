@@ -148,25 +148,29 @@ pulsar-songbook/
 
 ## Deployment
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions to Bluehost.
+Hosted on **Cloudflare Workers static assets**. See
+[DEPLOYMENT.md](./DEPLOYMENT.md) for the full guide.
 
 ### Quick Steps
 
-1. **Prerequisite:** ensure `.env.local` exists with the `VITE_FIREBASE_*` config —
-   without it the build deploys as a blank page. See
-   [DEPLOYMENT.md → Firebase Configuration](./DEPLOYMENT.md#firebase-configuration).
+**Deploying is merging to `main`.** Cloudflare Workers Builds runs
+`npm run build:cf` then `npx wrangler deploy`. Nothing is built or uploaded by
+hand.
 
-2. **Build:**
+1. Open a PR, get it green, merge to `main`.
+2. Watch the build under Worker → **Deployments**.
+3. Verify — a `200` is not enough, since stale DNS or a cached service worker can
+   fake success:
    ```bash
-   bash deploy.sh            # portable: build + safety guards, outputs dist/
+   curl -sI https://songbook.julianvirguez.com/ | grep -iE "^server|^cf-ray"
    ```
-   Then upload the contents of `dist/` to `public_html/` (the `.htaccess` is tracked
-   in `public/` and ships automatically — see DEPLOYMENT.md for the dotfile caveat).
+   Want `server: cloudflare` and a `cf-ray` ending `-SYD`. Then check the app
+   renders, a song opens, and Google login works.
 
-   If you have the personal `site-deploy` tool configured (machine-local, not in the
-   repo), `site-deploy songbook` does the build + upload in one step.
-
-3. **Test:** Visit your domain and verify the app actually renders (not just loads).
+> **Note on config:** the six `VITE_FIREBASE_*` values are **build variables on
+> the Worker**, not `.env.local` — CI has no `.env.local`. A missing one gives a
+> green build that loads to a blank page, which `npm run build:cf` is there to
+> catch. `.env.local` is still needed for local `npm run dev`.
 
 ## Keyboard Shortcuts
 

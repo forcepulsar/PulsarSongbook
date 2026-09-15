@@ -253,29 +253,42 @@ Supported directives: `{title:}`, `{artist:}`, `{comment:}`
 
 ## Deployment
 
-See `DEPLOYMENT.md` for full deployment instructions to Bluehost.
+See `DEPLOYMENT.md` for the full guide. Hosting is **Cloudflare Workers static
+assets**; Bluehost was retired 2026-09-14.
 
-**Build (`deploy.sh`):**
-- Run `bash deploy.sh` instead of `npm run build` for production. It runs the
-  build plus a safety check that aborts if the dev auth bypass
-  (`VITE_DEV_BYPASS_AUTH`) would leak into the bundle.
-- Outputs a self-contained `dist/` — no manual server-side steps required.
+**Deploying = merging to `main`.** Cloudflare Workers Builds runs
+`npm run build:cf` then `npx wrangler deploy`. There is no manual upload step and
+no `deploy.sh` (deleted).
 
-**Automated upload (`site-deploy`):**
-- `site-deploy songbook` builds (via `deploy.sh`) and FTPS-uploads `dist/` to the
-  Bluehost doc root. `site-deploy --all` pushes every configured site.
-- `site-deploy` is a personal machine-local tool; its config (FTP credentials,
-  per-site `remoteDir`) lives outside the repo at
-  `~/.config/site-deploy/sites.json` (chmod 600) — it is **not** part of this
-  codebase. Manual cPanel upload still works as a fallback.
+**Config lives in the repo:**
+- `wrangler.jsonc` — Worker name `pulsarsongbook` (must match what CI derives
+  from the repo name), assets from `./dist`, and
+  `not_found_handling: "single-page-application"` for BrowserRouter deep links.
+  Also `workers_dev: false` / `preview_urls: false`, and the custom domain pinned
+  in `routes`.
+- `public/_headers` — CORS and cache control. **Never give `/assets/*` a long
+  `max-age` or `immutable`:** SPA fallback returns `index.html` with `200` for
+  any unmatched path including `.js`, so a request for a deleted code-split chunk
+  would cache HTML at a JS URL for a year.
+- `public/.assetsignore` — keeps `.htaccess` out of the upload.
+- `.npmrc` — `legacy-peer-deps=true`; CI's `npm clean-install` fails without it.
+
+**Build variables (dashboard, not in the repo):** the six `VITE_FIREBASE_*` vars
+must be set on the Worker. Vite inlines them at build time and CI has no
+`.env.local`, so a missing one produces a green build that loads to a blank page.
+`scripts/check-build-env.mjs` (run by `build:cf`) fails the build instead.
 
 **Key points:**
-- `.htaccess` is tracked at `public/.htaccess` and Vite copies it into `dist/`
-  automatically. It provides the SPA fallback (BrowserRouter deep links),
-  HTTP→HTTPS redirect (required for PWA), CORS, gzip, and caching. Do not
-  hand-place it on the server — the build ships it.
-- Requires HTTPS for PWA functionality.
+- `public/.htaccess` is dead config, retained only so a Bluehost rollback stays a
+  one-step DNS change until that account is cancelled (November 2026). Cloudflare
+  never serves it. Edit `public/_headers` instead.
+- Routing is owned by `wrangler.jsonc`: in CI, wrangler deploys with
+  `override_scope`, so a custom domain added only in the dashboard can be
+  silently dropped by a later deploy.
+- Requires HTTPS for PWA functionality (zone setting: Always Use HTTPS).
 - Legacy version automatically included in build (`dist/legacy/`).
+- Verifying a deploy: a `200` is not enough — check `server: cloudflare`, a
+  `cf-ray` ending `-SYD`, and `colo=SYD`.
 
 ## Testing
 

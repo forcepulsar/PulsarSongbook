@@ -2,15 +2,21 @@
 
 This guide explains how to deploy the Pulsar Songbook PWA.
 
-**Hosting is moving to Cloudflare Workers** ahead of the Bluehost renewal in
-November 2026. See [Cloudflare Workers Hosting](#cloudflare-workers-hosting) for
-the live setup. The Bluehost/`site-deploy` instructions below remain valid as a
-fallback until the account is cancelled.
+Hosting is **Cloudflare Workers static assets**. Deployment is automatic: push to
+`main` and Cloudflare Workers Builds builds and deploys. There is no manual
+upload step.
+
+Bluehost was retired on 2026-09-14. `deploy.sh` and the `site-deploy songbook`
+FTPS path are gone, and the `songbook` entry has been removed from
+`~/.config/site-deploy/sites.json`. `public/.htaccess` is intentionally still in
+the repo until the Bluehost account is cancelled in November 2026 — see
+[Rollback](#rollback). Cloudflare never serves it (`public/.assetsignore`
+excludes it from the upload).
 
 ## Table of Contents
 - [Cloudflare Workers Hosting](#cloudflare-workers-hosting)
-- [Automated Deployment (Recommended)](#automated-deployment-recommended)
-- [Manual Deployment Steps](#manual-deployment-steps)
+- [Deploying Changes](#deploying-changes)
+- [Verifying a Deployment](#verifying-a-deployment)
 - [Legacy Version for iOS 12](#legacy-version-for-ios-12)
 - [Initial Setup (One-Time)](#initial-setup-one-time)
 - [Firebase Configuration](#firebase-configuration)
@@ -128,137 +134,63 @@ Delete the custom domain in Cloudflare and re-create the A record
 
 ---
 
-## Automated Deployment (Recommended)
-
-The fastest path is the `site-deploy` tool, which builds (through `deploy.sh`) and
-FTPS-uploads `dist/` to Bluehost in one command:
+## Deploying Changes
 
 ```bash
-site-deploy songbook          # build + upload this site
-site-deploy --dry-run songbook  # build + show what would upload, no upload
-site-deploy --all             # deploy every configured site
+git checkout -b my-change
+# ...edit, test with `npm run dev`...
+npm run test:run && npm run lint
+git commit -am "..." && git push -u origin my-change
+gh pr create --fill
 ```
 
-`site-deploy` is a personal, machine-local tool. Its config (FTP credentials,
-per-site `remoteDir`) lives **outside this repo** at
-`~/.config/site-deploy/sites.json` (chmod 600). It is not part of this codebase,
-so a fresh checkout won't have it — the manual steps below are the fallback.
+Merging to `main` is the deploy. Cloudflare Workers Builds then runs
+`npm run build:cf` followed by `npx wrangler deploy`. Watch it under the Worker →
+**Deployments**.
 
-> **⚠️ Prerequisite — `.env.local` must exist before building.**
-> The Firebase web config is read from `.env.local` at build time (see
-> [Firebase Configuration](#firebase-configuration)). If it's missing, Vite bakes
-> `apiKey: undefined` into the bundle and the deployed app loads to a **blank
-> page**. `deploy.sh` now aborts the build if the Firebase config is missing, but
-> only after you've created `.env.local`. To recreate it from the Firebase project:
-> ```bash
-> firebase apps:sdkconfig WEB --project pulsar-songbook-3a929
-> ```
-> then write the six values into `.env.local` as `VITE_FIREBASE_*` keys.
+Nothing needs to be built or uploaded by hand, and `.env.local` is **not** used
+by the deploy — CI reads the `VITE_FIREBASE_*` build variables instead (see
+[Required build variables](#required-build-variables)). You still need
+`.env.local` for local `npm run dev`/`npm run build`.
+
+The legacy iOS 12 app at `dist/legacy/` is part of the same build and deploys
+with it.
 
 ---
 
-## Manual Deployment Steps
+## Verifying a Deployment
 
-### 1. Build Production Version
+A `200` is not sufficient — local DNS or a stale service worker can make the old
+site look like a successful deploy. Confirm *who* served it and *which* build:
 
 ```bash
-cd <project-root>        # e.g. ~/Developer/personal/pulsar-songbook
-npm install              # if dependencies changed
-bash deploy.sh           # build + safety checks (see below)
+H=songbook.julianvirguez.com
+
+# 1. Cloudflare served it, from the Sydney edge
+curl -sI https://$H/ | grep -iE "^server|^cf-ray"     # want: cloudflare, cf-ray ...-SYD
+curl -s https://$H/cdn-cgi/trace | grep -E "^colo="   # want: colo=SYD
+
+# 2. Deep links work (BrowserRouter routes, not just /)
+for u in / /setlists /song/abc /setlist/x/edit /legacy/; do
+  printf "%s %s\n" "$u" "$(curl -s -o /dev/null -w '%{http_code}' https://$H$u)"
+done
+
+# 3. The Firebase config actually made it into the bundle.
+#    A build with missing variables exits 0 and ships `apiKey:void 0`.
+CH=$(curl -s https://$H/ | grep -o 'assets/config-[A-Za-z0-9_-]*\.js' | head -1)
+curl -s "https://$H/$CH" | grep -c firebaseapp.com   # want: 1 or more
 ```
 
-Use `bash deploy.sh` rather than a bare `npm run build`. It runs the production
-build plus two guards that abort before you ship a broken bundle:
-- **Dev auth bypass** must not leak into the bundle.
-- **Firebase config** must be present (catches a missing `.env.local`).
+If you see `server: Apache` or `remote_ip=162.241.24.233`, that is stale local
+DNS, not a failed deploy:
 
-**Output:** All deployable files are in the `dist/` folder — including
-`.htaccess`, which is tracked in the repo (`public/.htaccess`) and copied into
-`dist/` automatically by Vite. No manual server-side `.htaccess` step is needed.
+```bash
+sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+```
 
----
-
-### 2. Upload Files to Bluehost
-
-#### Option A: cPanel File Manager (Recommended)
-
-1. **Login to Bluehost**
-   - Go to: https://my.bluehost.com
-   - Login with your credentials
-   - Click "Advanced" → "cPanel"
-
-2. **Open File Manager**
-   - In cPanel, find "Files" section
-   - Click "File Manager"
-
-3. **Navigate to Deployment Location**
-   - Go to `public_html/` (for main domain)
-   - OR `public_html/subdomain-name/` (for subdomain)
-
-4. **Upload Files**
-   - Click "Upload" button (top toolbar)
-   - Drag ALL files from your local `dist/` folder
-   - OR Click "Select Files" and choose all files
-   - Wait for upload to complete (2-5 minutes)
-
-5. **Verify Upload**
-   - Refresh File Manager
-   - Confirm all files are present:
-     - `index.html`
-     - `manifest.webmanifest`
-     - `sw.js`
-     - `registerSW.js`
-     - `assets/` folder
-     - `icons/` folder
-
-#### Option B: FTP Upload
-
-1. **Get FTP Credentials**
-   - cPanel → "FTP Accounts"
-   - Note: hostname, username, password
-
-2. **Connect with FileZilla**
-   ```
-   Host: ftp.yourdomain.com
-   Username: your-bluehost-username
-   Password: your-password
-   Port: 21
-   ```
-
-3. **Upload Files**
-   - Local site (left): Navigate to `dist/` folder
-   - Remote site (right): Navigate to `public_html/`
-   - Select ALL files in `dist/`
-   - Drag to right panel
-   - Wait for transfer to complete
-
----
-
-### 3. Verify Deployment
-
-1. **Visit Your Site**
-   ```
-   https://yourdomain.com
-   ```
-
-2. **Clear Browser Cache**
-   - Chrome: Ctrl+Shift+Delete (Cmd+Shift+Delete on Mac)
-   - Select "Cached images and files"
-   - Click "Clear data"
-
-3. **Test Basic Functionality**
-   - Homepage loads (Song Library)
-   - Click a song → displays correctly
-   - Navigation works (no 404 errors)
-   - Edit song works
-   - Filters work
-   - Random song button works
-
-4. **Test PWA Features**
-   - Wait ~30 seconds on the site
-   - PWA install prompt should appear
-   - Install the app
-   - Test offline mode (disconnect internet)
+Then in a browser: the song library loads, a song opens, and Google login works.
+Login only works on the real domain — never on a `workers.dev` hostname, which
+is not an authorised Firebase domain (and is disabled anyway).
 
 ---
 
@@ -299,7 +231,9 @@ When you run `npm run build`, both versions are built:
 - Main app → `dist/`
 - Legacy app → `dist/legacy/`
 
-When you upload to Bluehost, upload the entire `dist/` folder contents including the `legacy/` subdirectory.
+The whole `dist/` tree, including `legacy/`, is uploaded by `wrangler deploy` in
+CI. Requests to `/legacy`, `/legacy/` and `/legacy/index.html` all resolve to the
+legacy app — real files take precedence over the SPA fallback.
 
 ### Shared Data Between Main and Legacy Apps
 
@@ -404,32 +338,39 @@ These steps only need to be done once, unless you change domains or hosting.
 
 ### Enable HTTPS/SSL
 
-**PWAs require HTTPS to function!**
+**PWAs require HTTPS to function.**
 
-1. **In Bluehost cPanel:**
-   - Find "Security" section
-   - Click "SSL/TLS Status" or "Let's Encrypt SSL"
-   - Find your domain
-   - Click "Run AutoSSL" or "Enable"
+Both parts are Cloudflare zone settings, already enabled:
 
-2. **Force HTTPS Redirect**
-   - Already configured in `.htaccess` (see below)
-   - Automatically redirects HTTP → HTTPS
+- **Certificate** — issued automatically when the custom domain was attached to
+  the Worker, and auto-renews. Covers `songbook.julianvirguez.com`.
+- **HTTP → HTTPS redirect** — zone `julianvirguez.com` → SSL/TLS → Edge
+  Certificates → **Always Use HTTPS**. This replaces the Apache `R=301` rule;
+  Cloudflare does not read `.htaccess`.
 
-### .htaccess (tracked in repo — no manual step)
+Verify: `curl -sI http://songbook.julianvirguez.com/` should return `301` to
+`https://`.
 
-The `.htaccess` is version-controlled at **`public/.htaccess`** and Vite copies it
-into `dist/` on every build, so it ships automatically with each deploy. You do
-**not** create or maintain it by hand in cPanel anymore.
+### .htaccess (retained for rollback only — do not edit)
 
-It provides:
-- **SPA fallback** — rewrites deep links (e.g. `/setlist/123`) to `index.html` so
-  BrowserRouter routes don't 404 on refresh.
-- **HTTP → HTTPS redirect** — required for PWA functionality.
-- **CORS** headers for fonts, **gzip** compression, and **browser caching**.
+`public/.htaccess` is **dead configuration on Cloudflare** and is deliberately
+left in the repo only so a rollback to Bluehost stays a one-step DNS change until
+that account is cancelled in November 2026. `public/.assetsignore` excludes it
+from the Worker upload, so it is never served. (Before that, it *was* being
+served in full at `/.htaccess` — Apache hides dotfiles by default, Workers does
+not.)
 
-To change these rules, edit `public/.htaccess` and redeploy — never edit the copy
-on the server, or your change will be overwritten on the next upload.
+Its rules now live elsewhere:
+
+| `.htaccess` rule | Cloudflare equivalent |
+|---|---|
+| SPA fallback rewrite | `not_found_handling` in `wrangler.jsonc` |
+| HTTP → HTTPS redirect | Zone setting **Always Use HTTPS** |
+| CORS for fonts/assets | `public/_headers` |
+| Browser caching | `public/_headers` |
+| gzip / DEFLATE | Automatic (Brotli, falling back to gzip) |
+
+**Edit `public/_headers` and `wrangler.jsonc`, not `public/.htaccess`.**
 
 ### Firebase Configuration
 
@@ -453,9 +394,12 @@ secrets. If you lose `.env.local`, regenerate the values from the Firebase proje
 firebase apps:sdkconfig WEB --project pulsar-songbook-3a929
 ```
 
-> **If `.env.local` is missing when you build, the deployed app loads to a blank
+> **If the Firebase config is missing when you build, the app loads to a blank
 > page** (Vite bakes `apiKey: undefined` and Firebase throws before React mounts).
-> `deploy.sh` guards against this and aborts the build if the config is absent.
+> Two separate places must have it: `.env.local` for local builds, and the
+> Worker's **build variables** for CI. `scripts/check-build-env.mjs` (run by
+> `npm run build:cf`) aborts a CI build when any are absent — but it deliberately
+> allows an all-empty local environment, where Vite reads `.env.local` itself.
 
 **Verify a build actually renders** (not just that files exist) before trusting a
 deploy — a headless render catches a blank page that HTTP 200 checks miss. Check
@@ -484,28 +428,18 @@ When you make changes to the app and want to deploy updates:
 - Test locally: `npm run dev`
 - Verify everything works: `npm run preview`
 
-### Step 2: Build & Deploy
+### Step 2: Open a PR and merge it
 
-**Recommended (one command):**
 ```bash
-site-deploy songbook
+git push -u origin my-change && gh pr create --fill
 ```
-This builds via `deploy.sh` (with the auth-bypass and Firebase-config guards) and
-FTPS-uploads `dist/` to the server.
 
-**Manual fallback:**
-```bash
-bash deploy.sh
-```
-then upload the contents of `dist/` to `public_html/`, overwriting existing files.
-`.htaccess` now ships inside `dist/`, so there's nothing to preserve by hand —
-**but** it's a dotfile, and cPanel File Manager and most FTP clients hide dotfiles
-by default. Enable "Show Hidden Files (dotfiles)" (cPanel File Manager → Settings)
-or your FTP client's equivalent, and confirm `.htaccess` actually landed in
-`public_html/` after upload. If it's missing, deep-link refreshes 404 and HTTPS
-redirect stops working. (The `site-deploy` path transfers dotfiles automatically.)
+Merging to `main` deploys. The auth-bypass and Firebase-config guards that used
+to live in `deploy.sh` now run in CI via `npm run build:cf`
+(`scripts/check-build-env.mjs`), so a misconfigured build fails loudly instead of
+shipping a blank page.
 
-### Step 4: Clear Cache
+### Step 3: Clear Cache
 
 **For you (developer):**
 - Browser: Ctrl+Shift+Delete
@@ -525,10 +459,13 @@ redirect stops working. (The `site-deploy` path transfers dotfiles automatically
 
 **Symptom:** Direct URL like `/song/123` gives 404 error
 
-**Solution:**
-1. Check `.htaccess` file exists
-2. Verify `.htaccess` has rewrite rules
-3. Ensure `mod_rewrite` is enabled (contact Bluehost if not)
+**Solution:** this is `not_found_handling` in `wrangler.jsonc`, which must be
+`"single-page-application"` so unmatched paths return `index.html` with `200`.
+`.htaccess` is not involved on Cloudflare.
+
+```bash
+grep not_found_handling wrangler.jsonc
+```
 
 ### Issue: PWA Won't Install
 
@@ -537,7 +474,7 @@ redirect stops working. (The `site-deploy` path transfers dotfiles automatically
 **Causes & Solutions:**
 1. **Not using HTTPS**
    - Verify URL shows 🔒 lock icon
-   - Enable SSL in cPanel
+   - Zone → SSL/TLS → Edge Certificates → **Always Use HTTPS**
 
 2. **Already installed**
    - Check `chrome://apps`
@@ -576,26 +513,20 @@ redirect stops working. (The `site-deploy` path transfers dotfiles automatically
 **Symptom:** Broken styles, missing images, JS errors
 
 **Solutions:**
-1. **Check file permissions**
-   - Files should be: 644
-   - Folders should be: 755
-   - In cPanel: Select files → Change Permissions
+1. **Check the deploy actually uploaded them**
+   - Worker → Deployments → the build log lists every uploaded asset
+   - File permissions are not a thing on Workers
 
-2. **Verify upload completed**
-   - Check all files in `assets/` folder uploaded
-   - Re-upload missing files
+2. **Check CORS**
+   - CORS headers come from `public/_headers`, not `.htaccess`
+   - `wrangler dev` logs `Parsed N valid header rules` if the file is valid
 
-3. **Check CORS**
-   - Ensure `.htaccess` has CORS rules for fonts
-
-### Issue: Can't Login/Access Bluehost
-
-**Solution:**
-1. Go to https://my.bluehost.com
-2. Use "Forgot Password" if needed
-3. Contact Bluehost support: 1-888-401-4678
-
----
+3. **Check for a stale chunk request**
+   - A request for a deleted code-split chunk returns `index.html` with `200`
+     (SPA fallback), which shows up as a JS syntax error in the console
+   - Expected after a deploy with a tab left open; a reload fixes it. This is
+     why `/assets/*` must never be given a long `max-age`/`immutable` —
+     see [Routing](#routing)
 
 ## Testing Checklist
 
@@ -677,31 +608,35 @@ After deployment, verify these features:
 
 ---
 
-## File Structure on Server
+## File Structure Deployed
+
+`wrangler deploy` uploads the contents of `dist/`:
 
 ```
-public_html/
-├── .htaccess                 (from dist/ — tracked at public/.htaccess)
-├── index.html                (from dist/)
-├── manifest.webmanifest      (from dist/)
-├── sw.js                     (from dist/)
-├── registerSW.js             (from dist/)
-├── assets/                   (from dist/)
+dist/
+├── _headers                  (parsed by Workers, never served)
+├── .assetsignore             (excludes .htaccess from upload)
+├── index.html
+├── manifest.webmanifest
+├── sw.js
+├── registerSW.js
+├── assets/                   (content-hashed; safe to replace wholesale)
 │   ├── index-[hash].js
 │   ├── index-[hash].css
 │   ├── index.es-[hash].js
 │   └── ...
-├── icons/                    (from dist/)
+├── icons/
 │   └── icon.svg
-└── legacy/                   (from dist/legacy/ - iOS 12 support)
+└── legacy/                   (iOS 12 support)
     ├── index.html            (ES5-compatible shell)
     ├── app.js                (Vanilla JavaScript - reads from IndexedDB)
     └── styles.css            (Plain CSS)
 ```
 
 **Important:**
-- `.htaccess` - ships from `dist/` on every deploy (tracked at `public/.htaccess`); don't hand-edit it on the server
-- Everything else - Overwrite with each deployment
+- `public/.htaccess` is built into `dist/` but **excluded from upload** by
+  `.assetsignore`. It is retained for Bluehost rollback only.
+- Each deploy replaces the asset set; there is nothing to preserve by hand.
 
 ---
 
@@ -722,29 +657,28 @@ public_html/
 
 ## Backup Strategy
 
-### Before Deploying
+No manual backup step. Cloudflare keeps every deployed version, and `main` is the
+source of truth.
 
-1. **Backup current production**
-   ```bash
-   # In cPanel File Manager:
-   # 1. Select all files in public_html/
-   # 2. Click "Compress"
-   # 3. Create archive: backup-YYYY-MM-DD.zip
-   # 4. Download the zip file
-   ```
+### Rolling back a bad deploy
 
-2. **Keep local build**
-   ```bash
-   # On your computer, keep the dist/ folder
-   # Or zip it:
-   zip -r dist-backup-$(date +%Y%m%d).zip dist/
-   ```
+Fastest — Worker → **Deployments** → pick the previous version → **Rollback**.
+Takes effect immediately, no rebuild.
 
-### Rollback If Needed
+Or revert the commit and let CI redeploy:
 
-1. Delete current files
-2. Upload previous backup
-3. Extract in `public_html/`
+```bash
+git revert <sha> && git push
+```
+
+Note that triggers are applied *after* a new version is activated, so a build
+that goes red at the trigger step has **already** put new code live — check the
+site rather than assuming it rolled back.
+
+### Rolling back to Bluehost
+
+Only relevant until the Bluehost account is cancelled (November 2026). See
+[Rollback](#rollback) under Cloudflare Workers Hosting.
 
 ---
 
@@ -768,8 +702,9 @@ npm run build
 
 ## Support & Resources
 
-- **Bluehost Support:** 1-888-401-4678
-- **Bluehost Knowledge Base:** https://my.bluehost.com/hosting/help
+- **Cloudflare Workers static assets:** https://developers.cloudflare.com/workers/static-assets/
+- **`_headers` / `_redirects`:** https://developers.cloudflare.com/workers/static-assets/headers/
+- **Workers Builds (CI):** https://developers.cloudflare.com/workers/ci-cd/builds/
 - **Project Repository:** https://github.com/forcepulsar/PulsarSongbook (public)
 - **This Documentation:** `DEPLOYMENT.md`
 
@@ -790,13 +725,16 @@ for the same online.
 
 ## Notes
 
-- Always test locally before deploying (`npm run preview`)
-- `.htaccess` is tracked in the repo (`public/.htaccess`) and ships with each build — don't hand-edit it on the server
-- `.env.local` (Firebase config) must exist before building, or the app deploys as a blank page
+- Always test locally before merging (`npm run preview`)
+- Edit `public/_headers` and `wrangler.jsonc`; `public/.htaccess` is dead config
+  kept only for Bluehost rollback
+- The six `VITE_FIREBASE_*` **build variables** must be set on the Worker, or the
+  build succeeds and the app deploys as a blank page. `npm run build:cf` guards
+  this in CI; `.env.local` only covers local builds
 - HTTPS is required for PWA functionality
 - Service worker caches everything - users get updates within 24 hours
 - IndexedDB stores all data locally - no backend needed
 
 ---
 
-**Last Updated:** 2026-07-20
+**Last Updated:** 2026-09-15
