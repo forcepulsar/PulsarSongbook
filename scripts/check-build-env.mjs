@@ -1,10 +1,11 @@
 // Pre-build guard for CI hosts (Cloudflare Workers builds).
 //
-// deploy.sh performs these checks against .env.local, which only exists on a
-// dev machine. In CI the same two misconfigurations fail *silently*: the build
-// exits 0 and ships a bundle with `undefined` Firebase config, which throws
-// before React mounts -> BLANK PAGE. Verified: building with .env.local absent
-// succeeds but emits no real config into dist/assets/.
+// These checks used to live in deploy.sh (deleted with the Bluehost path), which
+// read .env.local -- a file that only exists on a dev machine. In CI the same two
+// misconfigurations fail *silently*: the build exits 0 and ships a bundle with
+// `undefined` Firebase config, which throws before React mounts -> BLANK PAGE.
+// Verified: building with .env.local absent succeeds but emits no real config
+// into dist/assets/.
 //
 // Reads process.env only. Locally npm exposes nothing here (Vite loads
 // .env.local itself), so an all-empty env is treated as a local build. In CI
@@ -37,7 +38,7 @@ const inCI = Boolean(
 );
 
 if (missing.length === REQUIRED.length && !inCI) {
-  // Local build: Vite will read .env.local itself, and deploy.sh checks it.
+  // Local build: Vite reads .env.local itself.
   console.log('ℹ️  No VITE_FIREBASE_* in process.env - assuming local build via .env.local.');
   process.exit(0);
 }
