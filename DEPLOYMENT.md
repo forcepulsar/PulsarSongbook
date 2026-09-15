@@ -6,12 +6,10 @@ Hosting is **Cloudflare Workers static assets**. Deployment is automatic: push t
 `main` and Cloudflare Workers Builds builds and deploys. There is no manual
 upload step.
 
-Bluehost was retired on 2026-09-14. `deploy.sh` and the `site-deploy songbook`
-FTPS path are gone, and the `songbook` entry has been removed from
-`~/.config/site-deploy/sites.json`. `public/.htaccess` is intentionally still in
-the repo until the Bluehost account is cancelled in November 2026 — see
-[Rollback](#rollback). Cloudflare never serves it (`public/.assetsignore`
-excludes it from the upload).
+Bluehost was retired on 2026-09-14 and there is no longer any path back to it:
+`deploy.sh`, the `site-deploy songbook` FTPS entry, `public/.htaccess` and
+`public/.assetsignore` have all been removed. To roll back a bad deploy, see
+[Backup Strategy](#backup-strategy).
 
 ## Table of Contents
 - [Cloudflare Workers Hosting](#cloudflare-workers-hosting)
@@ -80,30 +78,16 @@ JS URL — for a year, if `immutable` were set. See the note in `public/_headers
 ### Zone settings
 
 - **SSL/TLS → Edge Certificates → Always Use HTTPS: ON.** Required for PWA and
-  service-worker registration. This replaces the Apache `R=301` rule in
-  `public/.htaccess`, which Cloudflare does not read.
+  service-worker registration. There is no in-repo equivalent — this is the only
+  thing enforcing the HTTP → HTTPS redirect, so do not turn it off.
 
-### Cutover checklist
+### How this was set up
 
-1. Merge to `main` so `wrangler.jsonc` exists, and let the build deploy.
-2. Verify on `https://<worker>.<subdomain>.workers.dev` — homepage, deep links,
-   `/legacy/`, assets. Google login will **fail** here (hostname is not in the
-   Firebase authorized-domains list); that is expected.
-3. DNS → delete the `songbook` A record → `162.241.24.233`. Leave all other
-   records alone.
-4. Worker → Domains → Add Domain → `songbook.julianvirguez.com`. Cloudflare
-   refuses while the old A record exists, so do 3 and 4 back to back.
-5. **Caching → Purge Everything.** The zone may hold `/assets/*` cached from
-   Bluehost under Apache's 1-month `Expires`, which would mix two builds.
-6. Verify *who* served the response, not just that it was a 200:
-   ```bash
-   curl -sI https://songbook.julianvirguez.com/ | grep -iE "^server|^cf-ray"
-   curl -s https://songbook.julianvirguez.com/cdn-cgi/trace | grep -E "^(colo|loc)="
-   ```
-   Want `server: cloudflare`, a `cf-ray` ending `-SYD`, `colo=SYD`. Seeing
-   `server: Apache` means stale local DNS:
-   `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder`.
-7. Re-test end to end including Google login (the real domain stays authorized).
+The cutover from Bluehost happened on 2026-09-14 and is complete. For the record:
+the Worker was created from the GitHub repo, the old `songbook` A record was
+deleted from the zone, and the custom domain was attached to the Worker (Cloudflare
+refuses to attach while a conflicting A record exists, so those two steps had to
+be back to back). The zone's **Always Use HTTPS** replaced the Apache redirect.
 
 ### Routing is owned by wrangler.jsonc, not the dashboard
 
@@ -127,12 +111,6 @@ and activated. If the trigger step fails you get a red build, but the new code
 is already live on the custom domain — it does **not** roll back to the previous
 version.
 
-### Rollback
-
-Delete the custom domain in Cloudflare and re-create the A record
-→ `162.241.24.233`, DNS only. Bluehost is untouched and still serving.
-
----
 
 ## Deploying Changes
 
@@ -181,8 +159,8 @@ CH=$(curl -s https://$H/ | grep -o 'assets/config-[A-Za-z0-9_-]*\.js' | head -1)
 curl -s "https://$H/$CH" | grep -c firebaseapp.com   # want: 1 or more
 ```
 
-If you see `server: Apache` or `remote_ip=162.241.24.233`, that is stale local
-DNS, not a failed deploy:
+If `server` is anything other than `cloudflare`, that is stale local DNS, not a
+failed deploy:
 
 ```bash
 sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
@@ -345,32 +323,11 @@ Both parts are Cloudflare zone settings, already enabled:
 - **Certificate** — issued automatically when the custom domain was attached to
   the Worker, and auto-renews. Covers `songbook.julianvirguez.com`.
 - **HTTP → HTTPS redirect** — zone `julianvirguez.com` → SSL/TLS → Edge
-  Certificates → **Always Use HTTPS**. This replaces the Apache `R=301` rule;
-  Cloudflare does not read `.htaccess`.
+  Certificates → **Always Use HTTPS**. This replaced the Apache `R=301`
+  redirect that used to live in `.htaccess`.
 
 Verify: `curl -sI http://songbook.julianvirguez.com/` should return `301` to
 `https://`.
-
-### .htaccess (retained for rollback only — do not edit)
-
-`public/.htaccess` is **dead configuration on Cloudflare** and is deliberately
-left in the repo only so a rollback to Bluehost stays a one-step DNS change until
-that account is cancelled in November 2026. `public/.assetsignore` excludes it
-from the Worker upload, so it is never served. (Before that, it *was* being
-served in full at `/.htaccess` — Apache hides dotfiles by default, Workers does
-not.)
-
-Its rules now live elsewhere:
-
-| `.htaccess` rule | Cloudflare equivalent |
-|---|---|
-| SPA fallback rewrite | `not_found_handling` in `wrangler.jsonc` |
-| HTTP → HTTPS redirect | Zone setting **Always Use HTTPS** |
-| CORS for fonts/assets | `public/_headers` |
-| Browser caching | `public/_headers` |
-| gzip / DEFLATE | Automatic (Brotli, falling back to gzip) |
-
-**Edit `public/_headers` and `wrangler.jsonc`, not `public/.htaccess`.**
 
 ### Firebase Configuration
 
@@ -461,7 +418,6 @@ shipping a blank page.
 
 **Solution:** this is `not_found_handling` in `wrangler.jsonc`, which must be
 `"single-page-application"` so unmatched paths return `index.html` with `200`.
-`.htaccess` is not involved on Cloudflare.
 
 ```bash
 grep not_found_handling wrangler.jsonc
@@ -518,7 +474,7 @@ grep not_found_handling wrangler.jsonc
    - File permissions are not a thing on Workers
 
 2. **Check CORS**
-   - CORS headers come from `public/_headers`, not `.htaccess`
+   - CORS headers come from `public/_headers`
    - `wrangler dev` logs `Parsed N valid header rules` if the file is valid
 
 3. **Check for a stale chunk request**
@@ -615,7 +571,6 @@ After deployment, verify these features:
 ```
 dist/
 ├── _headers                  (parsed by Workers, never served)
-├── .assetsignore             (excludes .htaccess from upload)
 ├── index.html
 ├── manifest.webmanifest
 ├── sw.js
@@ -633,10 +588,8 @@ dist/
     └── styles.css            (Plain CSS)
 ```
 
-**Important:**
-- `public/.htaccess` is built into `dist/` but **excluded from upload** by
-  `.assetsignore`. It is retained for Bluehost rollback only.
-- Each deploy replaces the asset set; there is nothing to preserve by hand.
+**Important:** each deploy replaces the asset set; there is nothing to preserve
+by hand. `_headers` is read and applied by Workers but never served as a file.
 
 ---
 
@@ -675,10 +628,7 @@ Note that triggers are applied *after* a new version is activated, so a build
 that goes red at the trigger step has **already** put new code live — check the
 site rather than assuming it rolled back.
 
-### Rolling back to Bluehost
-
-Only relevant until the Bluehost account is cancelled (November 2026). See
-[Rollback](#rollback) under Cloudflare Workers Hosting.
+There is no Bluehost fallback any more — that path was removed on 2026-09-15.
 
 ---
 
@@ -726,8 +676,7 @@ for the same online.
 ## Notes
 
 - Always test locally before merging (`npm run preview`)
-- Edit `public/_headers` and `wrangler.jsonc`; `public/.htaccess` is dead config
-  kept only for Bluehost rollback
+- Routing and headers live in `wrangler.jsonc` and `public/_headers`
 - The six `VITE_FIREBASE_*` **build variables** must be set on the Worker, or the
   build succeeds and the app deploys as a blank page. `npm run build:cf` guards
   this in CI; `.env.local` only covers local builds
