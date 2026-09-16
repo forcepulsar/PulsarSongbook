@@ -273,16 +273,38 @@
    */
   function renderSongList() {
     var header = getElement('header');
-    var main = getElement('main');
-    var controls = getElement('controls');
 
-    // Header with search
+    // Header with search. Written ONLY here, never on keystroke - see
+    // renderSongListItems() for why that matters.
     header.innerHTML =
       '<div class="header-content">' +
         '<h1 class="app-title">Pulsar Songbook</h1>' +
         '<input type="text" id="search-input" class="search-input" ' +
                'placeholder="Search songs..." value="' + escapeHtml(state.searchQuery) + '">' +
       '</div>';
+
+    var searchInput = getElement('search-input');
+    if (searchInput) {
+      // Both events: `input` is the real one, `keyup` is a belt-and-braces
+      // fallback for old WebKit. handleSearch() ignores the duplicate.
+      searchInput.addEventListener('input', handleSearch);
+      searchInput.addEventListener('keyup', handleSearch);
+    }
+
+    renderSongListItems();
+  }
+
+  /**
+   * Render just the filtered list and the count.
+   *
+   * Deliberately does NOT touch #header. Rewriting the header's innerHTML
+   * destroys the <input> the user is typing into and builds a new one, so the
+   * focused element stops existing and iOS tears down the on-screen keyboard.
+   * On the iPad that meant the keyboard vanished after every single character.
+   */
+  function renderSongListItems() {
+    var main = getElement('main');
+    var controls = getElement('controls');
 
     // Song list
     var listHtml = '<div class="song-list">';
@@ -311,13 +333,9 @@
         '<div class="song-count">' + state.filteredSongs.length + ' songs</div>' +
       '</div>';
 
-    // Attach event listeners
-    var searchInput = getElement('search-input');
-    if (searchInput) {
-      searchInput.addEventListener('input', handleSearch);
-      searchInput.addEventListener('keyup', handleSearch);
-    }
-
+    // Rows are rebuilt above, so their listeners must be reattached. The
+    // search input is not rebuilt here and keeps the listener bound in
+    // renderSongList().
     var songItems = document.querySelectorAll('.song-item');
     for (var j = 0; j < songItems.length; j++) {
       songItems[j].addEventListener('click', handleSongClick);
@@ -451,9 +469,20 @@
   // =============================================================================
 
   function handleSearch(e) {
-    state.searchQuery = e.target.value.toLowerCase();
+    var query = e.target.value.toLowerCase();
+
+    // `input` and `keyup` both fire for one keystroke. Without this guard the
+    // list is filtered and rebuilt twice per character.
+    if (query === state.searchQuery) {
+      return;
+    }
+
+    state.searchQuery = query;
     filterSongs();
-    renderSongList();
+
+    // List only. renderSongList() would rebuild the header and take the
+    // keyboard down with it.
+    renderSongListItems();
   }
 
   function handleSongClick(e) {
