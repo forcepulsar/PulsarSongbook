@@ -38,41 +38,60 @@ npm run clean:build
 
 ## Architecture
 
-### Dual Data Layer
+### Data Layer
 
-The app uses a hybrid data storage approach:
+**Firestore is the only store for content.** Dexie/IndexedDB is now settings
+only. Do not design against the old "IndexedDB primary, cloud optional" model,
+which this file described until 2026-09-16.
 
-1. **IndexedDB (Primary)** - Local storage via Dexie
-   - Database: `PulsarSongbook` (Schema v2)
-   - Tables: `songs`, `settings`, `syncQueue`, `setLists`, `setListSongs`
-   - Schema: `src/db/schema.ts`
-   - Used by both modern and legacy apps (shared database)
-   - **v2 Migration**: Added Set Lists feature (Feb 2026)
-
-2. **Firebase Firestore (Cloud Sync)** - Optional cloud backup
+1. **Firebase Firestore (primary, and the only source of songs)**
    - Collections: `songs`, `setLists`, `setListSongs`
    - Service: `src/services/firestore.ts`
-   - Only available when authenticated
-   - Enables cross-device sync
+   - Reads are **public** (`firestore.rules`: `allow read: if true`); writes
+     require an approved user. So viewing needs no auth, and an anonymous
+     client can read the library over the REST API with no key.
+   - Offline is handled by the SDK's own persistent cache
+     (`persistentLocalCache()` in `src/lib/firebase/config.ts`), which is a
+     *separate* IndexedDB database from the Dexie one below. Every page load
+     calls `getAllSongs()`, so one visit caches the whole library.
+
+2. **IndexedDB via Dexie — settings only**
+   - Database: `PulsarSongbook` (Schema v2)
+   - Schema still declares `songs`, `syncQueue`, `setLists`, `setListSongs`,
+     but **nothing writes to them**. Only `settings` is live, read via
+     `getSettings`/`updateSettings` from `src/components/SongDisplay.tsx`,
+     `src/components/SongEdit.tsx` and `src/contexts/ThemeContext.tsx`.
+   - The unused tables are harmless but are not a data source. If you need
+     song data, use `src/services/firestore.ts`.
 
 ### Dual App Architecture
 
-The project supports two versions that share the same IndexedDB database:
+Two independent apps. They share **no code** - only the Firestore data.
 
 1. **Modern App** (React 19, ES2022)
    - Main entry: `src/main.tsx`
    - Minimum: Safari 13.1+, Chrome 80+, Firefox 72+
    - Features: Full editing, PWA installation, offline mode
-   - iOS 12 detection redirects to legacy version
+   - The iOS 12 redirect is an **inline ES5 script in `index.html`**, not in
+     `src/main.tsx`. It must stay inline, stay ES5, and stay ahead of the
+     module script: the bundle is ES2022, so Safari 12 cannot parse it and
+     anything placed there never runs. That was a real bug (issue #12) that
+     left the iPad on a blank page. Guarded by `tests/legacy/redirect.test.ts`.
 
 2. **Legacy App** (Vanilla JS, ES5)
    - Location: `public/legacy/` (copied to `dist/legacy/` during build)
-   - Files: `index.html`, `app.js`, `styles.css`
+   - Files: `index.html`, `firestore-rest.js`, `app.js`, `styles.css`, plus
+     `selftest.html`/`selftest.js`
    - Minimum: Safari 12+ (iOS 12.5.7+)
    - Features: Read-only viewing, search, auto-scroll, font controls
-   - No editing, filters, or PWA features
+   - No editing, filters, set lists, or PWA features
+   - Reads songs from the **Firestore REST API** (`firestore-rest.js`), keyless
+     and `GET`-only. Online-only: no local cache.
+   - See `LEGACY_VERSION.md`. Editing rules in "iOS 12 Legacy Version" below.
 
-**Important:** Both apps read from the same IndexedDB database (`PulsarSongbook`), so songs added/edited in the modern app automatically appear in the legacy version.
+**Important:** the legacy app does *not* read the Dexie database. It used to,
+which meant it never worked on a real iPad - the modern app is what filled that
+store, and it cannot run on iOS 12.
 
 ### Authentication & Protected Routes
 
@@ -206,25 +225,39 @@ PWA settings are in `vite.config.ts`:
 
 ## Development Notes
 
-### Database Migration (v1 → v2)
+### Dexie schema (historical)
 
-**What Changed:**
-- Schema version bumped from 1 to 2 in `src/db/schema.ts`
-- Added two new tables: `setLists` and `setListSongs`
-- Dexie handles automatic migration (no data loss)
-- Existing tables (`songs`, `settings`, `syncQueue`) unchanged
+The Dexie database is at schema v2 and declares `songs`, `settings`,
+`syncQueue`, `setLists`, `setListSongs`. **Only `settings` is live.** The rest
+are leftovers from when IndexedDB was the primary store; content moved to
+Firestore and nothing writes to them any more.
 
-**Migration is automatic** - just load the app and Dexie upgrades the schema. All existing data is preserved.
+They are left in place because dropping a table in Dexie means another version
+bump and migration for no benefit. Treat them as inert - see "Data Layer".
+
+There used to be an IndexedDB-to-Firestore migration tool
+(`src/services/migration.ts`, plus a button in Settings). It was a no-op long
+before it was removed on 2026-09-16; the git history has it if ever needed.
 
 ### iOS 12 Legacy Version
 
 When editing the legacy version:
 1. Files are in `public/legacy/` (not in `src/`)
-2. No build step - vanilla ES5 JavaScript
+2. **No build step** - served verbatim, so the source IS the artifact
 3. Test at `http://localhost:5175/legacy/`
-4. Must be compatible with Safari 12 (no modern JS features)
-5. Reads from the same IndexedDB as modern app
-6. **Note**: Legacy version does NOT support Set Lists (v2 tables)
+4. **Run `npx vitest run tests/legacy` after every change.** Two failure modes
+   are invisible on a dev machine and fatal on Safari 12: modern *syntax* is a
+   parse error that blanks the page, and modern *library APIs*
+   (`Array.includes`, `Object.assign`, `Promise`, `fetch`) parse fine and then
+   throw. The suite gates both, the second by enumerating every API the code
+   touches against a reviewed allowlist.
+5. Reads songs from the **Firestore REST API** (`public/legacy/firestore-rest.js`),
+   keyless and `GET`-only. Not from Dexie.
+6. Online-only - there is no local cache and no service worker.
+7. **Note**: Legacy version does NOT support Set Lists
+8. `/legacy/selftest` is an on-device diagnostics page - open it on the iPad
+   when something is wrong, since Safari 12 has no console.
+9. Full detail in `LEGACY_VERSION.md`.
 
 ### Working with Songs
 
@@ -288,6 +321,16 @@ must be set on the Worker. Vite inlines them at build time and CI has no
 
 ## Testing
 
+```bash
+npm test              # vitest, watch mode
+npm run test:run      # single pass
+npx vitest run tests/legacy    # legacy app + iOS 12 redirect only
+```
+
+Tests live in `src/__tests__/` (modern app) and `tests/legacy/` (legacy app and
+the `index.html` redirect shim). The legacy tests execute the shipped ES5
+verbatim rather than importing it, so they cannot drift from what ships.
+
 ### Modern App Testing
 1. Test in Chrome/Safari 13.1+
 2. Test PWA installation
@@ -297,9 +340,10 @@ must be set on the Worker. Vite inlines them at build time and CI has no
 
 ### Legacy App Testing
 1. Visit `http://localhost:5175/legacy/` directly
-2. Or use iOS 12 device/simulator (auto-redirects)
+2. Or `/legacy/selftest` for on-device diagnostics
 3. Test song viewing, search, auto-scroll
-4. Verify it reads from same IndexedDB as modern app
+4. On a real iPad: check the search box keeps the keyboard up while typing
+   (rebuilding the header destroys the focused input and dismisses it)
 
 ## Common Tasks
 
@@ -319,19 +363,32 @@ must be set on the Worker. Vite inlines them at build time and CI has no
 2. Update README.md keyboard shortcuts section
 
 ### Working with Set Lists
-1. **Database**: Use `db.setLists` and `db.setListSongs` from `src/db/schema.ts`
+1. **Store**: Firestore collections `setLists` and `setListSongs`. The Dexie
+   tables of the same name are dead - do not use them.
 2. **Firestore**: Functions in `src/services/firestore.ts` (see "Recent Features" section)
 3. **Types**: Import from `src/types/song.ts` - `SetList`, `SetListWithSongs`
 4. **Junction Table**: `setListSongs` maps songs to set lists with position ordering
 
 ## Code Patterns
 
-### Fetching songs from IndexedDB
-```typescript
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/schema';
+### Fetching songs
 
-const songs = useLiveQuery(() => db.songs.toArray());
+Songs come from Firestore, not Dexie. `db.songs` exists in the schema but
+nothing writes to it.
+
+```typescript
+import { getAllSongs } from '../services/firestore';
+
+const [songs, setSongs] = useState<Song[]>([]);
+useEffect(() => {
+  getAllSongs().then(setSongs).catch(console.error);
+}, []);
+```
+
+Dexie is only for settings:
+
+```typescript
+import { getSettings, updateSettings } from '../db/schema';
 ```
 
 ### Using Firebase Firestore
