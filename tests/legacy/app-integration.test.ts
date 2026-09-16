@@ -70,6 +70,14 @@ function bootLegacyApp() {
   new Function(APP_SRC)();
 }
 
+/** Boot app.js alone, simulating firestore-rest.js failing to load. */
+function bootAppWithoutDataLayer() {
+  document.body.innerHTML =
+    '<div id="app"><div id="loading">Loading Pulsar Songbook...</div></div>';
+  delete (window as unknown as Record<string, unknown>).PulsarFirestoreREST;
+  new Function(APP_SRC)();
+}
+
 beforeEach(() => {
   FakeXHR.queue = [];
   FakeXHR.requests = [];
@@ -201,6 +209,107 @@ describe('legacy app boot', () => {
     expect(document.body.innerHTML).toContain('Bad Moon Rising');
   });
 
+  it('does not blame the network for a server or rules error', () => {
+    // A tightened firestore.rules used to tell the user to go check their
+    // Wi-Fi, sending them to chase a router problem that does not exist.
+    FakeXHR.queue.push({
+      status: 200,
+      json: {
+        error: { status: 'PERMISSION_DENIED', message: 'Missing permissions' },
+      },
+    });
+
+    bootLegacyApp();
+
+    const html = document.body.innerHTML;
+    expect(html).toContain('Missing permissions');
+    expect(html).toMatch(/problem with the song library, not your connection/i);
+    expect(html).not.toMatch(/check your wi-?fi/i);
+  });
+
+  it('does not blame the network for an HTTP error either', () => {
+    FakeXHR.queue.push({ status: 503, body: 'unavailable' });
+
+    bootLegacyApp();
+
+    expect(document.body.innerHTML).toContain('HTTP 503');
+    expect(document.body.innerHTML).not.toMatch(/check your wi-?fi/i);
+  });
+
+  it('does not blame the network for an empty library', () => {
+    FakeXHR.queue.push({ status: 200, json: { documents: [] } });
+
+    bootLegacyApp();
+
+    expect(document.body.innerHTML).toMatch(/loaded, but it is empty/i);
+    expect(document.body.innerHTML).not.toMatch(/check your wi-?fi/i);
+  });
+
+  it('offers Reload, not a dead Try Again, when the data layer is missing', () => {
+    // Retrying cannot succeed here: the script that does the fetching is the
+    // thing that failed to load, so a retry loops on the same error forever.
+    bootAppWithoutDataLayer();
+
+    const button = document.getElementById('retry-load');
+    expect(button?.textContent).toBe('Reload');
+    expect(document.body.innerHTML).toMatch(/loaded incompletely/i);
+
+    // And it never attempted a fetch, so nothing is pending.
+    expect(FakeXHR.requests).toHaveLength(0);
+  });
+
+  it('escapes quotes so the search box cannot break out of its attribute', () => {
+    // escapeHtml is textContent -> innerHTML, which escapes & < > but NOT
+    // quotes - and the search value and song id are interpolated into
+    // double-quoted attributes. A bare " escaped into tag context.
+    FakeXHR.queue.push({
+      status: 200,
+      json: { documents: [songDoc('s1', 'Normal Song', 'Someone')] },
+    });
+
+    bootLegacyApp();
+
+    const search = document.getElementById('search-input') as HTMLInputElement;
+    search.value = '" onfocus="window.__pwned=1" x="';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const rerendered = document.getElementById(
+      'search-input'
+    ) as HTMLInputElement;
+
+    // The payload survives as a literal value, with no injected attribute.
+    expect(rerendered.getAttribute('onfocus')).toBeNull();
+    expect(rerendered.value).toContain('onfocus');
+    expect(
+      (window as unknown as { __pwned?: number }).__pwned
+    ).toBeUndefined();
+  });
+
+  it('escapes quotes in a song id used as an attribute value', () => {
+    // Firestore auto-ids are alphanumeric, but document ids do permit quotes.
+    FakeXHR.queue.push({
+      status: 200,
+      json: {
+        documents: [
+          {
+            name:
+              'projects/p/databases/(default)/documents/songs/' +
+              'x" onclick="window.__pwned=1" y="',
+            fields: { title: { stringValue: 'Sneaky' } },
+          },
+        ],
+      },
+    });
+
+    bootLegacyApp();
+
+    const row = document.querySelector('.song-item');
+    expect(row?.getAttribute('onclick')).toBeNull();
+    expect(
+      (window as unknown as { __pwned?: number }).__pwned
+    ).toBeUndefined();
+  });
+
   it('escapes HTML coming from Firestore instead of injecting it', () => {
     // The data source changed, so re-verify the escaping contract end to end.
     // Song docs are writable by approved users, but a stray < in a title
@@ -213,7 +322,7 @@ describe('legacy app boot', () => {
             'x1',
             '<img src=x onerror="window.__pwned=1">',
             '<b>Bold Artist</b>',
-            '[C]<script>window.__pwned=2<\/script>'
+            '[C]<script>window.__pwned=2</script>'
           ),
         ],
       },

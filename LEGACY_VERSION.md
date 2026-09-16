@@ -180,9 +180,31 @@ xhr.onreadystatechange = function() {
 xhr.send(null);
 ```
 
-`fetchAllSongs()` follows `nextPageToken` (capped at 50 pages) and sorts by
-title. Driven from `readyState` rather than `onload`/`onerror`, whose coverage
-on old WebKit is patchier.
+`fetchAllSongs()` follows `nextPageToken` and sorts by title. Driven from
+`readyState` rather than `onload`/`onerror`, whose coverage on old WebKit is
+patchier.
+
+Three details that are load-bearing and easy to undo by accident:
+
+- **Field mask.** The request masks to the five fields the UI renders.
+  Unmasked, `documents.list` also ships `learningResource` (HTML) and
+  `editingNotes` for every song — 518 KB raw vs 418 KB, and all of it parsed
+  into memory on an old iPad before `mapDocument` discards it.
+- **Cache-buster.** This endpoint returns no `Cache-Control`, `Expires` or
+  `ETag`, so the browser may heuristically cache it and show a stale library
+  after a desktop edit. A unique `_=` query param avoids that and — unlike a
+  `Cache-Control` request header — keeps the request a "simple" cross-origin
+  GET with no CORS preflight.
+- **Single-settle latch.** A timed-out XHR fires `readystatechange`
+  (readyState 4, status 0) *and then* `timeout`. Without the latch in
+  `fetchPage()` the caller's error handler runs twice per request, which
+  mid-pagination fans out into duplicate fetches.
+
+Errors are tagged `connection` or `server` so the UI only advises checking
+Wi-Fi when the network is actually the problem. An HTTP error, a malformed
+body, a rules rejection, or an empty-but-successful library each say so
+plainly instead. Hitting the pagination cap reports an error rather than
+returning a silently truncated list.
 
 **Why not IndexedDB.** This app used to read the `songs` store of the
 `PulsarSongbook` IndexedDB database, filled by the modern app. That never

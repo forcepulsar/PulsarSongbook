@@ -27,6 +27,10 @@ interface LegacySong {
 interface FirestoreRest {
   PROJECT_ID: string;
   PAGE_SIZE: number;
+  MAX_PAGES: number;
+  FIELD_PATHS: string[];
+  ERROR_CONNECTION: string;
+  ERROR_SERVER: string;
   buildUrl: (pageToken?: string | null) => string;
   unwrapValue: (value: unknown) => unknown;
   extractId: (name: string) => string;
@@ -71,7 +75,13 @@ class FakeXHR {
     }
 
     if ('timeout' in next) {
+      // Match the XHR spec: a timeout runs the request-error steps, so
+      // readystatechange fires at readyState 4 / status 0 *and then* the
+      // timeout event fires. Anything that calls back on both paths will
+      // double-fire here, which is exactly what we want to catch.
+      this.status = 0;
       this.readyState = 4;
+      if (this.onreadystatechange) this.onreadystatechange();
       if (this.ontimeout) this.ontimeout();
       return;
     }
@@ -254,6 +264,47 @@ describe('buildUrl', () => {
   it('url-encodes the page token', () => {
     expect(api.buildUrl('a b/c+d')).toContain('pageToken=a%20b%2Fc%2Bd');
   });
+
+  it('masks to only the fields the UI renders', () => {
+    // Without a mask, documents.list ships learningResource (HTML) and
+    // editingNotes on every song, straight into an old iPad's memory.
+    const url = api.buildUrl(null);
+
+    for (const field of api.FIELD_PATHS) {
+      expect(url).toContain(`mask.fieldPaths=${field}`);
+    }
+    expect(url).not.toContain('learningResource');
+    expect(url).not.toContain('editingNotes');
+  });
+
+  it('busts the cache so an edited song is not served stale', () => {
+    // This endpoint returns no Cache-Control, Expires or ETag, which leaves
+    // the browser free to heuristically cache it.
+    const first = api.buildUrl(null);
+    const second = api.buildUrl(null);
+
+    expect(first).toMatch(/[?&]_=/);
+    expect(first).not.toBe(second);
+  });
+
+  it('stays a simple cross-origin GET, avoiding a CORS preflight', () => {
+    // Cache-busting via a query param rather than a Cache-Control request
+    // header keeps the request "simple", so there is no preflight round trip
+    // on a slow connection.
+    FakeXHR.queue.push({ status: 200, json: { documents: [] } });
+
+    const headers: string[] = [];
+    class HeaderRecordingXHR extends FakeXHR {
+      setRequestHeader(name: string) {
+        headers.push(name);
+      }
+    }
+    vi.stubGlobal('XMLHttpRequest', HeaderRecordingXHR);
+
+    api.fetchAllSongs(vi.fn(), vi.fn());
+
+    expect(headers).toEqual([]);
+  });
 });
 
 describe('sortByTitle', () => {
@@ -314,8 +365,10 @@ describe('fetchAllSongs', () => {
     expect(onSuccess.mock.calls[0][0]).toHaveLength(2);
   });
 
-  it('stops after MAX_PAGES if the API keeps returning a token', () => {
-    // Guards against a repeating token pinning the browser in a fetch loop.
+  it('fails loudly at MAX_PAGES instead of returning a truncated library', () => {
+    // A repeating token would otherwise pin the browser in a fetch loop. But
+    // reporting success at the cap is worse than failing: the user gets a
+    // plausible-looking, silently wrong song list.
     for (let i = 0; i < 60; i++) {
       FakeXHR.queue.push({
         status: 200,
@@ -327,10 +380,13 @@ describe('fetchAllSongs', () => {
     }
 
     const onSuccess = vi.fn();
-    api.fetchAllSongs(onSuccess, vi.fn());
+    const onError = vi.fn();
+    api.fetchAllSongs(onSuccess, onError);
 
-    expect(FakeXHR.requests).toHaveLength(50);
-    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(FakeXHR.requests).toHaveLength(api.MAX_PAGES);
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toMatch(/incomplete/i);
   });
 
   it('skips documents with no id instead of rendering blanks', () => {
@@ -372,6 +428,7 @@ describe('fetchAllSongs', () => {
 
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError.mock.calls[0][0]).toMatch(/internet connection/i);
+    expect(onError.mock.calls[0][1]).toBe(api.ERROR_CONNECTION);
   });
 
   it('surfaces an HTTP error with its status', () => {
@@ -381,6 +438,8 @@ describe('fetchAllSongs', () => {
     api.fetchAllSongs(vi.fn(), onError);
 
     expect(onError.mock.calls[0][0]).toContain('HTTP 503');
+    // Not a connectivity problem: the UI must not tell the user to check Wi-Fi.
+    expect(onError.mock.calls[0][1]).toBe(api.ERROR_SERVER);
   });
 
   it('handles a body that is not valid JSON', () => {
@@ -402,15 +461,23 @@ describe('fetchAllSongs', () => {
     api.fetchAllSongs(vi.fn(), onError);
 
     expect(onError.mock.calls[0][0]).toContain('Missing permissions');
+    expect(onError.mock.calls[0][1]).toBe(api.ERROR_SERVER);
   });
 
-  it('reports a timeout distinctly', () => {
+  it('reports a timeout exactly once, not once per event', () => {
+    // A timeout fires readystatechange (status 0) and then the timeout event.
+    // Without a settle latch the caller gets two errors for one request, and
+    // mid-pagination that fans out into duplicate fetches.
     FakeXHR.queue.push({ timeout: true });
 
     const onError = vi.fn();
-    api.fetchAllSongs(vi.fn(), onError);
+    const onSuccess = vi.fn();
+    api.fetchAllSongs(onSuccess, onError);
 
-    expect(onError.mock.calls[0][0]).toMatch(/too long/i);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onError.mock.calls[0][0]).toMatch(/internet connection/i);
+    expect(onError.mock.calls[0][1]).toBe(api.ERROR_CONNECTION);
   });
 
   it('stops paginating when a later page fails', () => {

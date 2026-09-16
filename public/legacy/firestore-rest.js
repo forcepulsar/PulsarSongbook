@@ -38,6 +38,15 @@
 
   var REQUEST_TIMEOUT_MS = 30000;
 
+  // Error kinds handed to the caller so the UI can tell a genuine network
+  // problem (advise checking Wi-Fi) from a server or rules problem (do not).
+  var ERROR_CONNECTION = 'connection';
+  var ERROR_SERVER = 'server';
+
+  // Monotonic suffix for the cache-buster, so two requests inside the same
+  // millisecond still get distinct URLs.
+  var requestCounter = 0;
+
   /**
    * Convert one Firestore typed value into a plain JS value.
    * Firestore returns { stringValue: "x" } rather than "x".
@@ -140,11 +149,38 @@
     return songs;
   }
 
+  // Only the fields this UI renders. Without a mask, documents.list returns
+  // every field on every song - including `learningResource` (HTML) and
+  // `editingNotes`, which the legacy app never shows and mapDocument throws
+  // away after the whole payload has been parsed into memory on an old iPad.
+  var FIELD_PATHS = [
+    'title',
+    'artist',
+    'chordProContent',
+    'language',
+    'difficulty'
+  ];
+
   function buildUrl(pageToken) {
     var url = BASE_URL + '?pageSize=' + PAGE_SIZE;
+
+    for (var i = 0; i < FIELD_PATHS.length; i++) {
+      url += '&mask.fieldPaths=' + encodeURIComponent(FIELD_PATHS[i]);
+    }
+
     if (pageToken) {
       url += '&pageToken=' + encodeURIComponent(pageToken);
     }
+
+    // Firestore sends no Cache-Control, Expires or ETag on this endpoint, which
+    // leaves the browser free to heuristically cache the response. That would
+    // show a stale library on the iPad after a song is edited on the desktop.
+    // A unique query param is the fix that costs nothing: unlike a
+    // Cache-Control request header it stays a "simple" cross-origin GET, so it
+    // triggers no CORS preflight round trip.
+    requestCounter++;
+    url += '&_=' + (new Date().getTime()) + '-' + requestCounter;
+
     return url;
   }
 
@@ -153,6 +189,20 @@
    */
   function fetchPage(pageToken, onPage, onError) {
     var xhr = new XMLHttpRequest();
+
+    // A timed-out request fires BOTH readystatechange (readyState 4, status 0)
+    // and ontimeout, and a failed send() can also race the handler. Without
+    // this latch the caller's callback runs twice per request, which in the
+    // pagination loop would fan out into duplicate fetches.
+    var settled = false;
+
+    function settle(callback, value, kind) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      callback(value, kind);
+    }
 
     xhr.open('GET', buildUrl(pageToken), true);
 
@@ -165,12 +215,12 @@
 
       // status 0 means the request never completed: offline, DNS, TLS, CORS.
       if (xhr.status === 0) {
-        onError('Could not reach the song library. Check your internet connection and try again.');
+        settle(onError, 'Could not reach the song library. Check your internet connection and try again.', ERROR_CONNECTION);
         return;
       }
 
       if (xhr.status < 200 || xhr.status >= 300) {
-        onError('The song library returned an error (HTTP ' + xhr.status + '). Please try again later.');
+        settle(onError, 'The song library returned an error (HTTP ' + xhr.status + '). Please try again later.', ERROR_SERVER);
         return;
       }
 
@@ -178,30 +228,30 @@
       try {
         parsed = JSON.parse(xhr.responseText);
       } catch (e) {
-        onError('The song library sent a response we could not read.');
+        settle(onError, 'The song library sent a response we could not read.', ERROR_SERVER);
         return;
       }
 
       if (parsed && parsed.error) {
         var message = parsed.error.message || 'Unknown error';
-        onError('The song library refused the request: ' + message);
+        settle(onError, 'The song library refused the request: ' + message, ERROR_SERVER);
         return;
       }
 
-      onPage(parsed || {});
+      settle(onPage, parsed || {});
     };
 
     if (typeof xhr.timeout !== 'undefined') {
       xhr.timeout = REQUEST_TIMEOUT_MS;
       xhr.ontimeout = function() {
-        onError('The song library took too long to respond. Check your internet connection and try again.');
+        settle(onError, 'The song library took too long to respond. Check your internet connection and try again.', ERROR_CONNECTION);
       };
     }
 
     try {
       xhr.send(null);
     } catch (sendError) {
-      onError('Could not reach the song library. Check your internet connection and try again.');
+      settle(onError, 'Could not reach the song library. Check your internet connection and try again.', ERROR_CONNECTION);
     }
   }
 
@@ -224,7 +274,18 @@
         }
       }
 
-      if (body.nextPageToken && pages < MAX_PAGES) {
+      if (body.nextPageToken) {
+        if (pages >= MAX_PAGES) {
+          // Reporting success here would hand the UI a plausible-looking but
+          // truncated (or, with a repeating token, duplicated) library with no
+          // signal that it is wrong. Fail loudly instead.
+          onError(
+            'The song library returned more pages than expected, so the list would be incomplete. Please try again later.',
+            ERROR_SERVER
+          );
+          return;
+        }
+
         fetchPage(body.nextPageToken, handlePage, onError);
         return;
       }
@@ -238,6 +299,10 @@
   global.PulsarFirestoreREST = {
     PROJECT_ID: PROJECT_ID,
     PAGE_SIZE: PAGE_SIZE,
+    MAX_PAGES: MAX_PAGES,
+    FIELD_PATHS: FIELD_PATHS,
+    ERROR_CONNECTION: ERROR_CONNECTION,
+    ERROR_SERVER: ERROR_SERVER,
     buildUrl: buildUrl,
     unwrapValue: unwrapValue,
     extractId: extractId,

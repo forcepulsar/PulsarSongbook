@@ -51,7 +51,15 @@
   function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+
+    // textContent -> innerHTML escapes & < > but NOT quotes, and several call
+    // sites interpolate into a double-quoted attribute value (the search box's
+    // value=, the song row's data-song-id=). Without these two replacements a
+    // single " breaks out of the attribute into tag context: typing
+    // `" onfocus=alert(1) x="` in the search box was enough.
+    return div.innerHTML
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function getElement(id) {
@@ -630,14 +638,26 @@
     var api = window.PulsarFirestoreREST;
 
     if (!api) {
-      showError('The song data module did not load. Please reload the page.');
+      // Retrying cannot help: the script itself is missing, so the only
+      // control we offer must be a reload.
+      showError(
+        'The song data module did not load.',
+        'This usually means the page loaded incompletely.',
+        'reload'
+      );
       return;
     }
 
     api.fetchAllSongs(
       function(songs) {
         if (!songs || songs.length === 0) {
-          showError('No songs found in the library.');
+          // A successful fetch of an empty library is not a failure, and must
+          // not tell the user to go check their Wi-Fi.
+          showError(
+            'No songs found in the library.',
+            'The library loaded, but it is empty.',
+            'retry'
+          );
           return;
         }
 
@@ -645,30 +665,50 @@
         filterSongs();
         renderApp();
       },
-      function(message) {
-        showError(message);
+      function(message, kind) {
+        // Only a genuine network failure warrants the connectivity advice. An
+        // HTTP error or a rules rejection would send the user chasing their
+        // router forever.
+        var tip = kind === api.ERROR_CONNECTION
+          ? 'This version needs an internet connection to load songs. Check your Wi-Fi, then try again.'
+          : 'This is a problem with the song library, not your connection.';
+
+        showError(message, tip, 'retry');
       }
     );
   }
 
-  function showError(message) {
+  /**
+   * Render the error screen.
+   *
+   * The old tip pointed at the main app ("open it first to add songs"), but
+   * the main app cannot run on iOS 12 - that is why this version exists. On
+   * the target device that advice was a dead end.
+   *
+   * @param {string} message what went wrong
+   * @param {string} tip     advice specific to this failure, not generic
+   * @param {string} action  'retry' to refetch, 'reload' to reload the page
+   */
+  function showError(message, tip, action) {
     var app = getElement('app');
+    var isReload = action === 'reload';
+    var buttonLabel = isReload ? 'Reload' : 'Try Again';
 
-    // The old tip pointed at the main app ("open it first to add songs"), but
-    // the main app cannot run on iOS 12 - that is why this version exists. On
-    // the target device that advice was a dead end, so offer a retry instead.
     app.innerHTML =
       '<div class="error-container">' +
         '<h2>Error Loading Songs</h2>' +
         '<p>' + escapeHtml(message) + '</p>' +
-        '<p><strong>Tip:</strong> This version needs an internet connection to load songs. ' +
-        'Check your Wi-Fi, then try again.</p>' +
-        '<p><button id="retry-load" class="retry-button">Try Again</button></p>' +
+        (tip ? '<p><strong>Tip:</strong> ' + escapeHtml(tip) + '</p>' : '') +
+        '<p><button id="retry-load" class="retry-button">' + buttonLabel + '</button></p>' +
       '</div>';
 
     var retryButton = getElement('retry-load');
     if (retryButton) {
       retryButton.onclick = function() {
+        if (isReload) {
+          window.location.reload();
+          return;
+        }
         app.innerHTML = '<div id="loading">Loading Pulsar Songbook...</div>';
         loadSongs();
       };
