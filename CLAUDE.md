@@ -310,6 +310,19 @@ must be set on the Worker. Vite inlines them at build time and CI has no
 `.env.local`, so a missing one produces a green build that loads to a blank page.
 `scripts/check-build-env.mjs` (run by `build:cf`) fails the build instead.
 
+**`build:cf` is the CI gate**, in this order:
+
+```
+check-build-env  ->  lint  ->  build  ->  test:run
+```
+
+A lint error or a failing test therefore blocks the deploy. Build runs before
+the tests on purpose: one test asserts the iOS 12 redirect shim is still ES5 in
+the *built* `dist/index.html`, which needs `dist/` to exist.
+
+Lint is at zero errors. Five warnings remain on purpose (see
+`eslint.config.js`) - do not add new ones.
+
 **Key points:**
 - Routing is owned by `wrangler.jsonc`: in CI, wrangler deploys with
   `override_scope`, so a custom domain added only in the dashboard can be

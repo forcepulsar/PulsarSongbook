@@ -87,8 +87,9 @@ export default function SongList() {
 
     // Sort the filtered results
     return filtered.sort((a, b) => {
-      let aVal: any = a[sortColumn];
-      let bVal: any = b[sortColumn];
+      // Every SortColumn maps to a string or undefined field on Song.
+      const aVal = a[sortColumn];
+      const bVal = b[sortColumn];
 
       // Handle undefined/null values - put them at the end
       if (!aVal && !bVal) return 0;

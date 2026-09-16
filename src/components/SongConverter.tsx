@@ -30,7 +30,7 @@ export default function SongConverter() {
     setError('');
     try {
       setOutput(convertToChordPro(input));
-    } catch (e) {
+    } catch {
       setError('Conversion failed. Check the input format.');
     }
   };

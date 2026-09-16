@@ -12,9 +12,9 @@ function test(name: string, fn: () => void) {
     fn();
     console.log(`  ✓ ${name}`);
     passed++;
-  } catch (e: any) {
+  } catch (e) {
     console.log(`  ✗ ${name}`);
-    console.log(`      ${e.message}`);
+    console.log(`      ${e instanceof Error ? e.message : String(e)}`);
     failed++;
   }
 }

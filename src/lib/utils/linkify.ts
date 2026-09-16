@@ -19,7 +19,7 @@ export function linkify(text: string): string {
   // Replace URLs with clickable links
   let result = text.replace(urlPattern, (match) => {
     // Remove trailing punctuation
-    let url = match.replace(/[.,;:!?)]+$/, '');
+    const url = match.replace(/[.,;:!?)]+$/, '');
     const trailingPunctuation = match.slice(url.length);
 
     // Add protocol if missing
