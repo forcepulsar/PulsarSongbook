@@ -201,6 +201,43 @@ describe('legacy app boot', () => {
     expect(document.body.innerHTML).toContain('Bad Moon Rising');
   });
 
+  it('escapes HTML coming from Firestore instead of injecting it', () => {
+    // The data source changed, so re-verify the escaping contract end to end.
+    // Song docs are writable by approved users, but a stray < in a title
+    // should never become markup either way.
+    FakeXHR.queue.push({
+      status: 200,
+      json: {
+        documents: [
+          songDoc(
+            'x1',
+            '<img src=x onerror="window.__pwned=1">',
+            '<b>Bold Artist</b>',
+            '[C]<script>window.__pwned=2<\/script>'
+          ),
+        ],
+      },
+    });
+
+    bootLegacyApp();
+
+    expect(document.querySelector('.song-item img')).toBeNull();
+    expect(document.querySelector('.song-item b')).toBeNull();
+    expect(
+      (window as unknown as { __pwned?: number }).__pwned
+    ).toBeUndefined();
+
+    // The raw text is still shown to the user, just inert.
+    expect(document.body.textContent).toContain('<img src=x');
+
+    // And the same holds once the song view renders the ChordPro body.
+    (document.querySelector('.song-item') as HTMLElement).click();
+    expect(document.querySelector('.chord-sheet script')).toBeNull();
+    expect(
+      (window as unknown as { __pwned?: number }).__pwned
+    ).toBeUndefined();
+  });
+
   it('filters the list from the search box', () => {
     FakeXHR.queue.push({
       status: 200,
