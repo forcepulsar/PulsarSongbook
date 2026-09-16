@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import { getAllSongs } from '../services/firestore';
-import { useAuth } from '../contexts/AuthContext';
-import { migrateIndexedDBToFirestore } from '../services/migration';
 
 export default function DataExport() {
   const [isExporting, setIsExporting] = useState(false);
-  const [migrating, setMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<string | null>(null);
-  const { currentUser, isApproved } = useAuth();
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -50,38 +45,6 @@ export default function DataExport() {
       alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
-    }
-  };
-
-  const handleMigration = async () => {
-    if (!currentUser || !isApproved) {
-      alert('You must be logged in and approved to migrate data');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      'This will copy all songs from local storage to the cloud. ' +
-      'Existing cloud songs will not be affected. Continue?'
-    );
-
-    if (!confirmed) return;
-
-    setMigrating(true);
-    setMigrationResult(null);
-
-    try {
-      const result = await migrateIndexedDBToFirestore(currentUser.uid);
-      setMigrationResult(
-        `Migration complete! ` +
-        `Success: ${result.success}, ` +
-        `Skipped: ${result.skipped}, ` +
-        `Errors: ${result.errors}, ` +
-        `Total: ${result.total}`
-      );
-    } catch (error) {
-      setMigrationResult(`Migration failed: ${error}`);
-    } finally {
-      setMigrating(false);
     }
   };
 
@@ -128,35 +91,6 @@ git push`}
             </li>
           </ol>
         </div>
-
-        {isApproved && (
-          <div className="pt-4 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Migration</h3>
-            <p className="text-gray-600 mb-4">
-              Migrate songs from local storage to cloud (one-time operation). This will copy all songs from IndexedDB to Firestore.
-            </p>
-            <button
-              onClick={handleMigration}
-              disabled={migrating}
-              className={`px-6 py-3 rounded-lg transition font-semibold ${
-                migrating
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              {migrating ? 'Migrating...' : 'Migrate to Cloud'}
-            </button>
-            {migrationResult && (
-              <div className={`mt-4 p-4 rounded-lg ${
-                migrationResult.includes('failed')
-                  ? 'bg-red-50 border border-red-200 text-red-800'
-                  : 'bg-green-50 border border-green-200 text-green-800'
-              }`}>
-                <p className="text-sm">{migrationResult}</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
     </div>
