@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Songbook Self Test</title>
+  <style>
+    /* Deliberately self-contained: if styles.css were the broken thing, this
+       page still has to be readable enough to tell you so. */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      padding: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    h1 { font-size: 20px; margin-bottom: 4px; }
+
+    .sub { font-size: 13px; color: #666; margin-bottom: 16px; line-height: 1.4; }
+
+    .banner {
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 17px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .banner small {
+      display: block;
+      font-size: 13px;
+      font-weight: normal;
+      margin-top: 6px;
+      opacity: 0.95;
+    }
+    .banner.good    { background: #1e7e34; }
+    .banner.bad     { background: #dc3545; }
+    .banner.running { background: #6c757d; }
+
+    ul { list-style: none; }
+
+    li {
+      background: #fff;
+      border-left: 5px solid #ccc;
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    li.pass { border-left-color: #1e7e34; }
+    li.fail { border-left-color: #dc3545; }
+    li.warn { border-left-color: #6c757d; }
+
+    .mark {
+      display: inline-block;
+      min-width: 52px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    li.pass .mark { color: #1e7e34; }
+    li.fail .mark { color: #dc3545; }
+    li.warn .mark { color: #6c757d; }
+
+    .name { font-size: 15px; }
+
+    .detail {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      margin-left: 52px;
+      word-wrap: break-word;
+      /* User agent strings are long and must not blow out the layout. */
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .back {
+      display: block;
+      margin-top: 20px;
+      padding: 14px;
+      background: #dc3545;
+      color: #fff;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 16px;
+      min-height: 44px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Songbook Self Test</h1>
+  <p class="sub">
+    Runs on this device, in this browser. Checks that the legacy songbook can
+    load songs here. Nothing is written or changed.
+  </p>
+
+  <div id="results">
+    <div class="banner running">Starting...</div>
+  </div>
+
+  <a class="back" href="/legacy/">Open the Songbook</a>
+
+  <!-- Same data layer the app uses, so this tests the real thing. -->
+  <script src="/legacy/firestore-rest.js"></script>
+  <script src="/legacy/selftest.js"></script>
+</body>
+</html>
