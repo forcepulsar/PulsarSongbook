@@ -621,95 +621,58 @@
   }
 
   /**
-   * Load songs from IndexedDB (shared with main app)
+   * Load songs from the Firestore REST API (see firestore-rest.js).
+   *
+   * Online-only by design: there is no local cache, so a live connection is
+   * required. Read-only: this never writes back to Firestore.
    */
   function loadSongs() {
-    // Check if IndexedDB is supported
-    if (!window.indexedDB) {
-      showError('IndexedDB is not supported in this browser. Please use a modern browser or update iOS.');
+    var api = window.PulsarFirestoreREST;
+
+    if (!api) {
+      showError('The song data module did not load. Please reload the page.');
       return;
     }
 
-    // Open the same database as the main app (no version specified = open latest version)
-    var request = indexedDB.open('PulsarSongbook');
-
-    request.onerror = function() {
-      showError('Could not open IndexedDB. Error: ' + (request.error ? request.error.message : 'Unknown'));
-    };
-
-    request.onsuccess = function(event) {
-      var db = event.target.result;
-
-      // Check if songs store exists
-      if (!db.objectStoreNames.contains('songs')) {
-        showError('No songs database found. Please open the main app first to initialize the database.');
-        db.close();
-        return;
-      }
-
-      // Read all songs from the songs object store
-      var transaction = db.transaction(['songs'], 'readonly');
-      var objectStore = transaction.objectStore('songs');
-      var getAllRequest = objectStore.getAll();
-
-      getAllRequest.onsuccess = function() {
-        var songs = getAllRequest.result;
-
-        if (songs && songs.length > 0) {
-          // Convert from main app format to legacy format
-          state.songs = songs.map(function(song) {
-            return {
-              id: song.id,
-              title: song.title || 'Untitled',
-              artist: song.artist || '',
-              chordProContent: song.chordProContent || '',
-              language: song.language || '',
-              difficulty: song.difficulty || ''
-            };
-          });
-
-          // Sort by title
-          state.songs.sort(function(a, b) {
-            var titleA = a.title.toLowerCase();
-            var titleB = b.title.toLowerCase();
-            if (titleA < titleB) return -1;
-            if (titleA > titleB) return 1;
-            return 0;
-          });
-
-          filterSongs();
-          renderApp();
-        } else {
-          showError('No songs found in database. Please add songs using the main app first.');
+    api.fetchAllSongs(
+      function(songs) {
+        if (!songs || songs.length === 0) {
+          showError('No songs found in the library.');
+          return;
         }
 
-        db.close();
-      };
-
-      getAllRequest.onerror = function() {
-        showError('Error reading songs from database: ' + (getAllRequest.error ? getAllRequest.error.message : 'Unknown'));
-        db.close();
-      };
-
-      transaction.onerror = function() {
-        showError('Database transaction error: ' + (transaction.error ? transaction.error.message : 'Unknown'));
-        db.close();
-      };
-    };
-
-    // No onupgradeneeded handler needed - we only read from existing database
-    // The main app is responsible for creating and upgrading the database structure
+        state.songs = songs;
+        filterSongs();
+        renderApp();
+      },
+      function(message) {
+        showError(message);
+      }
+    );
   }
 
   function showError(message) {
     var app = getElement('app');
+
+    // The old tip pointed at the main app ("open it first to add songs"), but
+    // the main app cannot run on iOS 12 - that is why this version exists. On
+    // the target device that advice was a dead end, so offer a retry instead.
     app.innerHTML =
       '<div class="error-container">' +
         '<h2>Error Loading Songs</h2>' +
         '<p>' + escapeHtml(message) + '</p>' +
-        '<p><strong>Tip:</strong> Open the main app first to add songs, then return to the legacy version.</p>' +
-        '<p><a href="/" style="color: #007aff; text-decoration: underline;">Open Main App</a></p>' +
+        '<p><strong>Tip:</strong> This version needs an internet connection to load songs. ' +
+        'Check your Wi-Fi, then try again.</p>' +
+        '<p><button id="retry-load" class="retry-button">Try Again</button></p>' +
       '</div>';
+
+    var retryButton = getElement('retry-load');
+    if (retryButton) {
+      retryButton.onclick = function() {
+        app.innerHTML = '<div id="loading">Loading Pulsar Songbook...</div>';
+        loadSongs();
+      };
+    }
   }
 
   // =============================================================================

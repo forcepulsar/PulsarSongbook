@@ -316,6 +316,24 @@ body {
   line-height: 1.5;
 }
 
+.retry-button {
+  margin-top: 8px;
+  padding: 12px 28px;
+  font-size: 16px;
+  color: #fff;
+  background: #dc3545;
+  border: 0;
+  border-radius: 6px;
+  /* Generous tap target: this is the recovery path on a touch-only device. */
+  min-height: 44px;
+  min-width: 140px;
+  -webkit-appearance: none;
+}
+
+.retry-button:active {
+  background: #b02a37;
+}
+
 /* =============================================================================
    LOADING STATE
    ============================================================================= */
