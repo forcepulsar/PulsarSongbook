@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SongList from '../components/SongList';
 import * as firestoreService from '../services/firestore';
+import type { Song } from '../types/song';
 
 vi.mock('../lib/firebase/config', () => ({
   db: {},
@@ -33,7 +34,8 @@ const mockSongs = [
 
 describe('SongList navigation', () => {
   beforeEach(() => {
-    vi.mocked(firestoreService.getAllSongs).mockResolvedValue(mockSongs as any);
+    // Fixtures carry only the fields these tests exercise.
+    vi.mocked(firestoreService.getAllSongs).mockResolvedValue(mockSongs as Song[]);
     mockNavigate.mockClear();
   });
 

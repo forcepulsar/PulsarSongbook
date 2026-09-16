@@ -99,9 +99,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Sign in error:', err);
-      setError(err.message || 'Failed to sign in with Google');
+      setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
     }
   };
 
@@ -109,9 +109,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setError(null);
       await firebaseSignOut(auth);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Sign out error:', err);
-      setError(err.message || 'Failed to sign out');
+      setError(err instanceof Error ? err.message : 'Failed to sign out');
     }
   };
 

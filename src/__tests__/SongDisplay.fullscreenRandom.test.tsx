@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SongDisplay from '../components/SongDisplay';
 import * as firestoreService from '../services/firestore';
+import type { Song } from '../types/song';
 
 vi.mock('../lib/firebase/config', () => ({
   db: {},
@@ -72,8 +73,9 @@ function renderSongDisplay() {
 
 describe('SongDisplay random button in fullscreen', () => {
   beforeEach(() => {
-    vi.mocked(firestoreService.getSong).mockResolvedValue(currentSong as any);
-    vi.mocked(firestoreService.getAllSongs).mockResolvedValue(librarySongs as any);
+    // Fixtures carry only the fields these tests exercise.
+    vi.mocked(firestoreService.getSong).mockResolvedValue(currentSong as Song);
+    vi.mocked(firestoreService.getAllSongs).mockResolvedValue(librarySongs as Song[]);
     mockNavigate.mockClear();
   });
 

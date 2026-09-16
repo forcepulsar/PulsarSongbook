@@ -99,6 +99,13 @@ export default function SongEdit() {
   }, []);
 
   // Debounced preview update
+  //
+  // react-hooks/refs is a false positive here. The rule sees previewRef.current
+  // inside a useMemo factory, which does run during render - but the factory
+  // only *creates* the debounced function. Every ref access below happens
+  // inside that function, which fires on a 300ms timer, long after render.
+  // Disabled for this block only, rather than downgrading the rule globally.
+  /* eslint-disable react-hooks/refs */
   const debouncedUpdate = useMemo(
     () =>
       debounce((content: string) => {
@@ -113,6 +120,7 @@ export default function SongEdit() {
       }, 300),
     [settings]
   );
+  /* eslint-enable react-hooks/refs */
 
   // Update preview when editor content changes
   useEffect(() => {

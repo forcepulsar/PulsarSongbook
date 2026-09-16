@@ -7,7 +7,9 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || '/';
+  // Set by ProtectedRoute when it bounces an unauthenticated visitor here.
+  const from =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/';
 
   // Redirect if already logged in
   useEffect(() => {

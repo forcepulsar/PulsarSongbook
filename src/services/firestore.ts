@@ -12,6 +12,7 @@ import {
   Timestamp,
   writeBatch
 } from 'firebase/firestore';
+import type { DocumentReference } from 'firebase/firestore';
 import { db } from '../lib/firebase/config';
 import type { Song, SetList, SetListWithSongs } from '../types/song';
 
@@ -19,11 +20,23 @@ const SONGS_COLLECTION = 'songs';
 const SETLISTS_COLLECTION = 'setLists';
 const SETLIST_SONGS_COLLECTION = 'setListSongs';
 
-function timestampToDate(timestamp: any): Date {
-  if (timestamp?.toDate) {
+/** A Firestore Timestamp, an already-converted Date, or a raw date value. */
+type TimestampLike =
+  | { toDate: () => Date }
+  | Date
+  | string
+  | number
+  | null
+  | undefined;
+
+function timestampToDate(timestamp: TimestampLike): Date {
+  if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
     return timestamp.toDate();
   }
-  return timestamp instanceof Date ? timestamp : new Date(timestamp);
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  return new Date(timestamp as string | number);
 }
 
 export async function getAllSongs(): Promise<Song[]> {
@@ -62,7 +75,7 @@ export async function createSong(
 ): Promise<string> {
   // Filter out undefined values - Firestore doesn't accept them
   // But convert empty strings to null for optional fields
-  const cleanedData: Record<string, any> = {};
+  const cleanedData: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(songData)) {
     if (value !== undefined) {
@@ -93,7 +106,7 @@ export async function updateSong(
 
   // Filter out undefined values - Firestore doesn't accept them
   // But convert empty strings to null for optional fields
-  const cleanedUpdates: Record<string, any> = {};
+  const cleanedUpdates: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(updates)) {
     if (value !== undefined) {
@@ -196,7 +209,7 @@ export async function createSetList(
   setListData: Omit<SetList, 'id' | 'createdAt' | 'updatedAt'>,
   userId: string
 ): Promise<string> {
-  const cleanedData: Record<string, any> = {};
+  const cleanedData: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(setListData)) {
     if (value !== undefined) {
@@ -224,7 +237,7 @@ export async function updateSetList(
 ): Promise<void> {
   const docRef = doc(db, SETLISTS_COLLECTION, id);
 
-  const cleanedUpdates: Record<string, any> = {};
+  const cleanedUpdates: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(updates)) {
     if (value !== undefined) {
@@ -314,7 +327,7 @@ export async function reorderSetListSongs(setListId: string, songIds: string[]):
   const querySnapshot = await getDocs(q);
 
   // Create a map of songId -> docRef
-  const mappingMap = new Map<string, any>();
+  const mappingMap = new Map<string, DocumentReference>();
   querySnapshot.docs.forEach((doc) => {
     const data = doc.data();
     mappingMap.set(data.songId, doc.ref);

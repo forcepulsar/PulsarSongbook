@@ -37,7 +37,7 @@ Compute → Workers & Pages → the `pulsarsongbook` Worker
 
 | Setting | Value | Notes |
 |---|---|---|
-| Build command | `npm run build:cf` | ⚠️ not `npm run build` — that skips the Firebase config guard and can deploy a blank page |
+| Build command | `npm run build:cf` | ⚠️ not `npm run build` — that skips the Firebase config guard, the lint gate and the test run |
 | Deploy command | `npx wrangler deploy` | |
 | Production branch | `main` | |
 
@@ -59,7 +59,13 @@ VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 ```
 
-`npm run build:cf` runs `scripts/check-build-env.mjs` first, which fails the
+`npm run build:cf` runs four steps in order - `check-build-env`, `lint`,
+`build`, `test:run` - so a lint error or a failing test blocks the deploy
+rather than shipping. `build` precedes the tests deliberately: one test checks
+that the iOS 12 redirect shim is still ES5 in the built `dist/index.html`, and
+that needs the build output to exist.
+
+It runs `scripts/check-build-env.mjs` first, which fails the
 build loudly if any are missing in CI (rather than shipping a blank page). These
 are Firebase *web* config values — public by design, not secrets.
 
