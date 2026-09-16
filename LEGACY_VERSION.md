@@ -79,11 +79,13 @@ function detectAndRedirectIOS12() {
 
 **Files:**
 - `index.html` - Minimal HTML shell (~1KB)
-- `firestore-rest.js` - Firestore REST data layer, ES5 (~7KB)
-- `app.js` - Vanilla JavaScript with ES5 syntax (~20KB)
+- `firestore-rest.js` - Firestore REST data layer, ES5 (~10KB)
+- `app.js` - Vanilla JavaScript with ES5 syntax (~22KB)
 - `styles.css` - Plain CSS (~8KB)
+- `selftest.html` / `selftest.js` - on-device diagnostics, not linked from the
+  app (~11KB, only loaded if you visit it)
 
-**Total Bundle Size:** ~36KB
+**Total Bundle Size:** ~41KB for the app itself
 
 Script order in `index.html` is load-bearing: `firestore-rest.js` must come
 before `app.js`, which reads `window.PulsarFirestoreREST` during `init()`.
@@ -104,9 +106,12 @@ Implemented a custom ChordPro parser without using any modern syntax:
 - ❌ Template literals → String concatenation
 - ❌ `const`/`let` → `var` only
 - ❌ Optional chaining → `obj && obj.prop`
-- ❌ `async`/`await` → Callbacks and promises only
+- ❌ `async`/`await` → Callbacks only. **Not** Promises: `Promise` is ES6 and
+  absent on Safari 12, and `tests/legacy/es5-syntax.test.ts` rejects it.
 - ❌ ES6 classes → Factory functions
-- ❌ Spread operator → `Object.assign()`
+- ❌ Spread operator → manual copy loops. **Not** `Object.assign()`: that is
+  also ES6, parses fine as ES5, and then throws at runtime on the iPad. The
+  same trap applies to `Array.from`, `Array.prototype.includes` and `.find`.
 
 ### 4. State Management
 
@@ -244,6 +249,29 @@ The legacy version requires no build step:
 
 ## Testing Checklist
 
+### On-device self test — `/legacy/selftest.html`
+
+**Open this on the iPad first.** It runs in that device's actual Safari and
+reports what works, with a green ALL CHECKS PASSED banner or a red count of
+failures. Screenshot it if anything fails.
+
+It exists because the target device cannot be tested from a dev machine: the
+automated suite below runs the same ES5 source but under jsdom, which is not
+Safari 12's engine, and there is no iOS 12 simulator available. It is also the
+debugger of last resort — Safari 12 has no on-device console, so without it a
+failure on the iPad is a blank screen and no information.
+
+Checks the engine and platform APIs, that `firestore-rest.js` loaded and
+parsed, that the request is keyless/masked/cache-busted, and then performs the
+real fetch and reports the song count and timing. Styles are inlined so the
+page stays legible even if the app's stylesheet is the broken thing. `GET`
+only; it writes nothing.
+
+Two rows are worth reading on the iPad specifically: *iOS version detected*
+should say `12.x (this is the target device)`, and *JS engine* should say
+`no optional chaining` — together they confirm you are genuinely exercising
+the old-engine path rather than a modern browser.
+
 ### Automated (`npx vitest run tests/legacy`)
 - ES5 syntax gate: every file in `public/legacy/` must parse at
   `ecmaVersion: 5`. This is the regression guard for the exact class of bug
@@ -265,6 +293,9 @@ The legacy version requires no build step:
 - [ ] Font controls work
 
 ### On iOS 12.5.7 (or Simulator)
+- [ ] Visit `/legacy/selftest.html` **first** — expect a green ALL CHECKS
+      PASSED banner, `iOS version detected: 12.x`, and `JS engine: no optional
+      chaining`
 - [ ] Visit `/legacy/` **directly** — the root URL will not redirect you
       (see Known Limitations #1)
 - [ ] Song list loads over Wi-Fi
