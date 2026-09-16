@@ -369,3 +369,124 @@ describe('legacy app boot', () => {
     expect(html).not.toContain('Bad Moon Rising');
   });
 });
+
+describe('legacy search box on a touch device', () => {
+  function bootWithSongs() {
+    FakeXHR.queue.push({
+      status: 200,
+      json: {
+        documents: [
+          songDoc('s1', 'Africa', 'Toto'),
+          songDoc('s2', 'Bad Moon Rising', 'CCR'),
+          songDoc('s3', 'Wish You Were Here', 'Pink Floyd'),
+        ],
+      },
+    });
+    bootLegacyApp();
+    return document.getElementById('search-input') as HTMLInputElement;
+  }
+
+  function type(input: HTMLInputElement, value: string) {
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  it('keeps the same input element alive while typing', () => {
+    // THE BUG: renderSongList() rewrote #header on every keystroke, destroying
+    // the focused <input> and building a new one. iOS tears down the on-screen
+    // keyboard when the focused element stops existing, so the keyboard
+    // vanished after every character typed on the iPad.
+    const input = bootWithSongs();
+
+    type(input, 'a');
+    expect(document.getElementById('search-input')).toBe(input);
+
+    type(input, 'af');
+    expect(document.getElementById('search-input')).toBe(input);
+  });
+
+  it('keeps focus on the input while typing', () => {
+    const input = bootWithSongs();
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    type(input, 'toto');
+
+    // This is the assertion that stands in for "the keyboard stays up".
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('still filters the list live as you type', () => {
+    const input = bootWithSongs();
+
+    type(input, 'floyd');
+
+    const titles = Array.from(document.querySelectorAll('.song-title')).map(
+      (n) => n.textContent
+    );
+    expect(titles).toEqual(['Wish You Were Here']);
+  });
+
+  it('updates the count as the filter narrows', () => {
+    const input = bootWithSongs();
+    expect(document.querySelector('.song-count')?.textContent).toBe('3 songs');
+
+    type(input, 'africa');
+
+    expect(document.querySelector('.song-count')?.textContent).toBe('1 songs');
+  });
+
+  it('does not re-render twice for one keystroke', () => {
+    // `input` and `keyup` are both bound as a fallback for old WebKit. Firing
+    // both for one character must not filter and rebuild the list twice.
+    const input = bootWithSongs();
+    const main = document.getElementById('main') as HTMLElement;
+
+    // Count list rebuilds by watching the .song-list node identity change.
+    let renders = 0;
+    let previous = main.querySelector('.song-list');
+    const countRebuild = () => {
+      const current = main.querySelector('.song-list');
+      if (current !== previous) {
+        renders++;
+        previous = current;
+      }
+    };
+
+    input.value = 'toto';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    countRebuild();
+    input.dispatchEvent(new Event('keyup', { bubbles: true }));
+    countRebuild();
+
+    expect(renders).toBe(1);
+  });
+
+  it('keeps song rows tappable after filtering', () => {
+    // The rows ARE rebuilt, so their click handlers must be reattached.
+    const input = bootWithSongs();
+
+    type(input, 'africa');
+    (document.querySelector('.song-item') as HTMLElement).click();
+
+    expect(document.querySelectorAll('.song-item')).toHaveLength(0);
+    expect(document.querySelector('.song-title-header')?.textContent).toBe('Africa');
+  });
+
+  it('restores the header and search box when returning from a song', () => {
+    const input = bootWithSongs();
+    type(input, 'africa');
+    (document.querySelector('.song-item') as HTMLElement).click();
+
+    (document.getElementById('back-btn') as HTMLElement).click();
+
+    // A fresh input is expected here - the whole view was replaced - and it
+    // must carry the query forward and be wired up again.
+    const restored = document.getElementById('search-input') as HTMLInputElement;
+    expect(restored).not.toBeNull();
+    expect(restored.value).toBe('africa');
+
+    type(restored, '');
+    expect(document.querySelectorAll('.song-item')).toHaveLength(3);
+  });
+});
