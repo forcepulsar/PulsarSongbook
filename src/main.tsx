@@ -6,42 +6,11 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 // =============================================================================
-// iOS 12 Detection & Redirect to Legacy Version
+// Legacy redirect
 // =============================================================================
-
-/**
- * Detect iOS 12 and redirect to legacy version
- * Legacy version uses ES5-compatible vanilla JavaScript for maximum compatibility
- */
-function detectAndRedirectIOS12() {
-  const ua = navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
-
-  if (isIOS) {
-    // Extract iOS version from user agent
-    const versionMatch = ua.match(/OS (\d+)_/);
-    if (versionMatch) {
-      const majorVersion = parseInt(versionMatch[1], 10);
-
-      // Redirect iOS 12 and below to legacy version
-      if (majorVersion <= 12) {
-        console.log('[Compatibility] iOS 12 detected, redirecting to legacy version');
-        window.location.href = '/legacy/';
-        return true; // Stop execution
-      }
-    }
-  }
-
-  return false;
-}
-
-// Run detection before starting the app
-const shouldRedirect = detectAndRedirectIOS12();
-if (shouldRedirect) {
-  // Don't continue with app initialization
-  // @ts-ignore - Exit early
-  throw new Error('Redirecting to legacy version');
-}
+// Handled by an inline ES5 script in index.html, NOT here. This file is bundled
+// to ES2022, so on Safari 12 it fails to parse and nothing in it runs - which
+// is precisely why the old in-bundle check never worked. See issue #12.
 
 // =============================================================================
 // Service Worker Registration

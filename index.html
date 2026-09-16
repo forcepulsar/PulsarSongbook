@@ -6,6 +6,56 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pulsar Songbook</title>
+
+    <!--
+      Send browsers that cannot run the app below to /legacy/.
+
+      This MUST live here, inline, in ES5, and before the module script. The
+      check used to sit inside src/main.tsx, but that file is bundled to ES2022
+      (tsconfig.app.json) and the built bundle contains optional chaining and
+      nullish coalescing, both of which need Safari 13.1. Safari 12 throws a
+      *parse* error before executing a single statement, so the redirect never
+      ran on the one platform it existed for and the iPad just showed a blank
+      white page. See LEGACY_VERSION.md and issue #12.
+
+      Inline rather than a separate file: an extra round trip before the
+      redirect is worse than ~15 bytes of HTML.
+    -->
+    <script>
+      (function () {
+        // Real files win over the SPA fallback, so /legacy/ never reaches this
+        // script. Guard anyway: not_found_handling returns this HTML for ANY
+        // unmatched path, and a typo'd /legacy/... must not redirect-loop.
+        if (window.location.pathname.indexOf('/legacy/') === 0) return;
+
+        function toLegacy() {
+          // replace(), not href: keeps the unusable page out of the back stack.
+          window.location.replace('/legacy/');
+        }
+
+        var ua = navigator.userAgent;
+
+        // iOS 12 and below. iPadOS 13+ reports as "Macintosh", so modern iPads
+        // correctly fall through to the capability probe and stay on this app.
+        if (/iPad|iPhone|iPod/.test(ua)) {
+          var match = ua.match(/OS (\d+)_/);
+          if (match && parseInt(match[1], 10) <= 12) {
+            toLegacy();
+            return;
+          }
+        }
+
+        // Catch-all for any engine that cannot parse the bundle's syntax,
+        // including old desktop browsers. Only SyntaxError means "too old":
+        // a CSP that forbids eval throws EvalError, and treating that as
+        // failure would send every modern browser to the legacy app.
+        try {
+          eval('null?.x');
+        } catch (error) {
+          if (error instanceof SyntaxError) toLegacy();
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
