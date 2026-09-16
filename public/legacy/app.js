@@ -51,7 +51,15 @@
   function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+
+    // textContent -> innerHTML escapes & < > but NOT quotes, and several call
+    // sites interpolate into a double-quoted attribute value (the search box's
+    // value=, the song row's data-song-id=). Without these two replacements a
+    // single " breaks out of the attribute into tag context: typing
+    // `" onfocus=alert(1) x="` in the search box was enough.
+    return div.innerHTML
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function getElement(id) {
@@ -621,95 +629,90 @@
   }
 
   /**
-   * Load songs from IndexedDB (shared with main app)
+   * Load songs from the Firestore REST API (see firestore-rest.js).
+   *
+   * Online-only by design: there is no local cache, so a live connection is
+   * required. Read-only: this never writes back to Firestore.
    */
   function loadSongs() {
-    // Check if IndexedDB is supported
-    if (!window.indexedDB) {
-      showError('IndexedDB is not supported in this browser. Please use a modern browser or update iOS.');
+    var api = window.PulsarFirestoreREST;
+
+    if (!api) {
+      // Retrying cannot help: the script itself is missing, so the only
+      // control we offer must be a reload.
+      showError(
+        'The song data module did not load.',
+        'This usually means the page loaded incompletely.',
+        'reload'
+      );
       return;
     }
 
-    // Open the same database as the main app (no version specified = open latest version)
-    var request = indexedDB.open('PulsarSongbook');
-
-    request.onerror = function() {
-      showError('Could not open IndexedDB. Error: ' + (request.error ? request.error.message : 'Unknown'));
-    };
-
-    request.onsuccess = function(event) {
-      var db = event.target.result;
-
-      // Check if songs store exists
-      if (!db.objectStoreNames.contains('songs')) {
-        showError('No songs database found. Please open the main app first to initialize the database.');
-        db.close();
-        return;
-      }
-
-      // Read all songs from the songs object store
-      var transaction = db.transaction(['songs'], 'readonly');
-      var objectStore = transaction.objectStore('songs');
-      var getAllRequest = objectStore.getAll();
-
-      getAllRequest.onsuccess = function() {
-        var songs = getAllRequest.result;
-
-        if (songs && songs.length > 0) {
-          // Convert from main app format to legacy format
-          state.songs = songs.map(function(song) {
-            return {
-              id: song.id,
-              title: song.title || 'Untitled',
-              artist: song.artist || '',
-              chordProContent: song.chordProContent || '',
-              language: song.language || '',
-              difficulty: song.difficulty || ''
-            };
-          });
-
-          // Sort by title
-          state.songs.sort(function(a, b) {
-            var titleA = a.title.toLowerCase();
-            var titleB = b.title.toLowerCase();
-            if (titleA < titleB) return -1;
-            if (titleA > titleB) return 1;
-            return 0;
-          });
-
-          filterSongs();
-          renderApp();
-        } else {
-          showError('No songs found in database. Please add songs using the main app first.');
+    api.fetchAllSongs(
+      function(songs) {
+        if (!songs || songs.length === 0) {
+          // A successful fetch of an empty library is not a failure, and must
+          // not tell the user to go check their Wi-Fi.
+          showError(
+            'No songs found in the library.',
+            'The library loaded, but it is empty.',
+            'retry'
+          );
+          return;
         }
 
-        db.close();
-      };
+        state.songs = songs;
+        filterSongs();
+        renderApp();
+      },
+      function(message, kind) {
+        // Only a genuine network failure warrants the connectivity advice. An
+        // HTTP error or a rules rejection would send the user chasing their
+        // router forever.
+        var tip = kind === api.ERROR_CONNECTION
+          ? 'This version needs an internet connection to load songs. Check your Wi-Fi, then try again.'
+          : 'This is a problem with the song library, not your connection.';
 
-      getAllRequest.onerror = function() {
-        showError('Error reading songs from database: ' + (getAllRequest.error ? getAllRequest.error.message : 'Unknown'));
-        db.close();
-      };
-
-      transaction.onerror = function() {
-        showError('Database transaction error: ' + (transaction.error ? transaction.error.message : 'Unknown'));
-        db.close();
-      };
-    };
-
-    // No onupgradeneeded handler needed - we only read from existing database
-    // The main app is responsible for creating and upgrading the database structure
+        showError(message, tip, 'retry');
+      }
+    );
   }
 
-  function showError(message) {
+  /**
+   * Render the error screen.
+   *
+   * The old tip pointed at the main app ("open it first to add songs"), but
+   * the main app cannot run on iOS 12 - that is why this version exists. On
+   * the target device that advice was a dead end.
+   *
+   * @param {string} message what went wrong
+   * @param {string} tip     advice specific to this failure, not generic
+   * @param {string} action  'retry' to refetch, 'reload' to reload the page
+   */
+  function showError(message, tip, action) {
     var app = getElement('app');
+    var isReload = action === 'reload';
+    var buttonLabel = isReload ? 'Reload' : 'Try Again';
+
     app.innerHTML =
       '<div class="error-container">' +
         '<h2>Error Loading Songs</h2>' +
         '<p>' + escapeHtml(message) + '</p>' +
-        '<p><strong>Tip:</strong> Open the main app first to add songs, then return to the legacy version.</p>' +
-        '<p><a href="/" style="color: #007aff; text-decoration: underline;">Open Main App</a></p>' +
+        (tip ? '<p><strong>Tip:</strong> ' + escapeHtml(tip) + '</p>' : '') +
+        '<p><button id="retry-load" class="retry-button">' + buttonLabel + '</button></p>' +
       '</div>';
+
+    var retryButton = getElement('retry-load');
+    if (retryButton) {
+      retryButton.onclick = function() {
+        if (isReload) {
+          window.location.reload();
+          return;
+        }
+        app.innerHTML = '<div id="loading">Loading Pulsar Songbook...</div>';
+        loadSongs();
+      };
+    }
   }
 
   // =============================================================================

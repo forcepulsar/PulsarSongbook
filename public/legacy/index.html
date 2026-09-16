@@ -35,6 +35,9 @@
     <div id="loading">Loading Pulsar Songbook...</div>
   </div>
 
+  <!-- Data layer first: app.js reads window.PulsarFirestoreREST on init. -->
+  <script src="/legacy/firestore-rest.js"></script>
+
   <!-- Load app script -->
   <script src="/legacy/app.js"></script>
 </body>

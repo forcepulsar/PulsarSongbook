@@ -24,11 +24,27 @@ Created a standalone vanilla JavaScript app at `/legacy/` that:
 
 ### 1. iOS 12 Detection & Redirect
 
-**File:** `src/main.tsx`
+**File:** `src/main.tsx` — **and it does not work. Open `/legacy/` directly.**
 
-Added detection logic that runs before the main app loads:
+> **How to open this on the iPad:** go to
+> `https://songbook.julianvirguez.com/legacy/` and add *that* URL to the home
+> screen. The site root will not send you here automatically.
+>
+> Why: the detection below lives inside the React bundle, which is built to
+> ES2022 (`tsconfig.app.json`). That bundle contains optional chaining (`?.`)
+> and nullish coalescing (`??`), neither of which Safari 12 can parse — both
+> need Safari 13.1. Safari 12 therefore throws a *parse* error before any
+> statement in the file executes, including the redirect. The result on a real
+> iOS 12 device is a blank white page at the root URL, and the redirect is
+> effectively dead code on the only platform it targets.
+>
+> Fixing it properly means moving the check into an inline ES5 `<script>` in
+> `index.html`, ahead of the module bundle. That is deliberately **not** done
+> here: this work was scoped to keep the legacy app independent and leave the
+> modern app untouched. Tracked as a follow-up.
+
+The intended (but unreachable) logic:
 - Checks user agent for iOS version
-- Tests for optional chaining support via `eval()`
 - Redirects iOS 12 and below to `/legacy/`
 - Prevents main app from loading on incompatible browsers
 
@@ -63,11 +79,14 @@ function detectAndRedirectIOS12() {
 
 **Files:**
 - `index.html` - Minimal HTML shell (~1KB)
+- `firestore-rest.js` - Firestore REST data layer, ES5 (~7KB)
 - `app.js` - Vanilla JavaScript with ES5 syntax (~20KB)
-- `styles.css` - Plain CSS (~7KB)
-- `songs.json` - Song data in Salesforce format (~4KB sample)
+- `styles.css` - Plain CSS (~8KB)
 
-**Total Bundle Size:** ~28KB (excluding songs data)
+**Total Bundle Size:** ~36KB
+
+Script order in `index.html` is load-bearing: `firestore-rest.js` must come
+before `app.js`, which reads `window.PulsarFirestoreREST` during `init()`.
 
 ### 3. ChordPro Parser (ES5)
 
@@ -141,19 +160,64 @@ All keyboard shortcuts use `e.keyCode` for maximum compatibility:
 
 ### 7. Data Loading
 
-Songs are loaded via XMLHttpRequest (not Fetch API):
+Songs come straight from the Firestore REST API via `XMLHttpRequest` (not the
+Fetch API), implemented in `firestore-rest.js`:
 
 ```javascript
+// No API key: firestore.rules grants `allow read: if true` on /songs.
+var url = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID +
+  '/databases/(default)/documents/songs?pageSize=300';
+
 var xhr = new XMLHttpRequest();
-xhr.open('GET', 'songs.json', true);
-xhr.onload = function() {
-  if (xhr.status === 200) {
-    var data = JSON.parse(xhr.responseText);
-    // Process Salesforce format
+xhr.open('GET', url, true);
+xhr.onreadystatechange = function() {
+  if (xhr.readyState === 4 && xhr.status === 200) {
+    var body = JSON.parse(xhr.responseText);
+    // body.documents[].fields are Firestore typed values:
+    //   { title: { stringValue: "Africa" } }  ->  { title: "Africa" }
   }
 };
-xhr.send();
+xhr.send(null);
 ```
+
+`fetchAllSongs()` follows `nextPageToken` and sorts by title. Driven from
+`readyState` rather than `onload`/`onerror`, whose coverage on old WebKit is
+patchier.
+
+Three details that are load-bearing and easy to undo by accident:
+
+- **Field mask.** The request masks to the five fields the UI renders.
+  Unmasked, `documents.list` also ships `learningResource` (HTML) and
+  `editingNotes` for every song — 518 KB raw vs 418 KB, and all of it parsed
+  into memory on an old iPad before `mapDocument` discards it.
+- **Cache-buster.** This endpoint returns no `Cache-Control`, `Expires` or
+  `ETag`, so the browser may heuristically cache it and show a stale library
+  after a desktop edit. A unique `_=` query param avoids that and — unlike a
+  `Cache-Control` request header — keeps the request a "simple" cross-origin
+  GET with no CORS preflight.
+- **Single-settle latch.** A timed-out XHR fires `readystatechange`
+  (readyState 4, status 0) *and then* `timeout`. Without the latch in
+  `fetchPage()` the caller's error handler runs twice per request, which
+  mid-pagination fans out into duplicate fetches.
+
+Errors are tagged `connection` or `server` so the UI only advises checking
+Wi-Fi when the network is actually the problem. An HTTP error, a malformed
+body, a rules rejection, or an empty-but-successful library each say so
+plainly instead. Hitting the pagination cap reports an error rather than
+returning a silently truncated list.
+
+**Why not IndexedDB.** This app used to read the `songs` store of the
+`PulsarSongbook` IndexedDB database, filled by the modern app. That never
+worked on a real iOS 12 device: the modern app cannot run there, so it never
+created the store, and the legacy app's own error told users to "open the main
+app first" — the one thing that device cannot do. The modern app now writes
+songs only to Firestore, so REST is the only data path that works on target.
+
+**Read-only by construction.** `firestore-rest.js` issues `GET` only. There is
+no write path, so this app cannot modify or delete a song.
+
+**Online-only.** There is no local cache. A connection is required, and a
+failed fetch shows a connectivity message with a Try Again button.
 
 ### 8. Styling
 
@@ -180,6 +244,18 @@ The legacy version requires no build step:
 
 ## Testing Checklist
 
+### Automated (`npx vitest run tests/legacy`)
+- ES5 syntax gate: every file in `public/legacy/` must parse at
+  `ecmaVersion: 5`. This is the regression guard for the exact class of bug
+  that broke the redirect — modern syntax is invisible on a dev machine and
+  fatal on Safari 12.
+- Data layer: value unwrapping, document mapping, pagination, the `MAX_PAGES`
+  guard, and every error path (offline, HTTP error, bad JSON, Firestore error
+  payload, timeout).
+- Boot: the real `firestore-rest.js` + `app.js` are executed in a DOM with a
+  stubbed transport, asserting the list renders, search filters, a row tap
+  opens the song, the retry button recovers, and IndexedDB is never opened.
+
 ### On Modern Browsers
 - [ ] Visit `/legacy/` directly
 - [ ] Song list loads
@@ -189,16 +265,18 @@ The legacy version requires no build step:
 - [ ] Font controls work
 
 ### On iOS 12.5.7 (or Simulator)
-- [ ] Visit `/` (main app URL)
-- [ ] Automatically redirects to `/legacy/`
-- [ ] No JavaScript errors in console
-- [ ] All features work
+- [ ] Visit `/legacy/` **directly** — the root URL will not redirect you
+      (see Known Limitations #1)
+- [ ] Song list loads over Wi-Fi
+- [ ] No JavaScript errors in console (Safari Web Inspector over USB)
+- [ ] Tap a song; lyrics and chords render
+- [ ] Turn Wi-Fi off and reload: connectivity error with a Try Again button
+- [ ] Turn Wi-Fi on and tap Try Again: list loads
 - [ ] Keyboard shortcuts work
 - [ ] Settings persist (localStorage)
 
 ### Cross-browser
 - [ ] Works on all modern browsers at `/legacy/`
-- [ ] iOS 12 redirects to `/legacy/`
 - [ ] iOS 13+ stays on main app
 
 ## Deployment
@@ -211,12 +289,13 @@ The legacy version is deployed automatically with the main app:
 
 ## Updating Songs
 
-To update songs in the legacy version:
+Nothing to do. The legacy app reads the live `songs` collection from Firestore
+on every load, so a song edited in the modern app appears here on the next
+refresh. There is no snapshot file to regenerate and no rebuild or redeploy
+needed to publish content changes.
 
-1. Export from main app (Export All Songs button)
-2. Copy the JSON file to `public/legacy/songs.json`
-3. Rebuild: `npm run build`
-4. Upload `dist/` to server
+(The old flow — export to `public/legacy/songs.json`, rebuild, upload — no
+longer applies. That file does not exist.)
 
 ## Browser Support
 
@@ -263,10 +342,11 @@ To update songs in the legacy version:
 
 ### New Files
 1. `public/legacy/index.html` - HTML shell
-2. `public/legacy/app.js` - Vanilla JavaScript app
-3. `public/legacy/styles.css` - Plain CSS
-4. `public/legacy/songs.json` - Sample song data
+2. `public/legacy/firestore-rest.js` - Firestore REST data layer (ES5)
+3. `public/legacy/app.js` - Vanilla JavaScript app
+4. `public/legacy/styles.css` - Plain CSS
 5. `LEGACY_VERSION.md` - This document
+6. `tests/legacy/` - ES5 syntax gate, data-layer unit tests, boot tests
 
 ### Modified Files
 1. `src/main.tsx` - Added iOS 12 detection
@@ -275,12 +355,22 @@ To update songs in the legacy version:
 
 ## Known Limitations
 
-1. **No Editing** - CodeMirror 6 requires modern features
-2. **No Filters** - Could be added but deemed unnecessary
-3. **No PWA** - Service Workers require modern APIs
-4. **No Offline Mode** - Requires Service Workers
-5. **No External Links** - Google/YouTube/Spotify searches not implemented
-6. **Basic UI** - Simple design, no fancy animations
+1. **No auto-redirect from the site root** - the detection in `src/main.tsx`
+   cannot run on Safari 12 (see section 1). Open `/legacy/` directly and
+   bookmark it. This is the one limitation that bites on first use.
+2. **Online-only** - songs are fetched from Firestore on every load and there
+   is no local cache, so the app needs a connection. A failed fetch shows a
+   connectivity message with a Try Again button.
+3. **No Editing** - CodeMirror 6 requires modern features. Also read-only by
+   construction: the data layer issues `GET` only.
+4. **No Filters** - Could be added but deemed unnecessary
+5. **No PWA / no Service Worker** - `/sw.js` is registered by the modern app
+   (`src/main.tsx`), which never executes on iOS 12, so this app has no
+   service worker and no cached shell. Offline support would need its own
+   ES5 service worker scoped to `/legacy/`.
+6. **No Set Lists** - the feature is Firestore-backed but not implemented here
+7. **No External Links** - Google/YouTube/Spotify searches not implemented
+8. **Basic UI** - Simple design, no fancy animations
 
 ## Future Enhancements (Optional)
 
