@@ -270,7 +270,6 @@ no `deploy.sh` (deleted).
   `max-age` or `immutable`:** SPA fallback returns `index.html` with `200` for
   any unmatched path including `.js`, so a request for a deleted code-split chunk
   would cache HTML at a JS URL for a year.
-- `public/.assetsignore` — keeps `.htaccess` out of the upload.
 - `.npmrc` — `legacy-peer-deps=true`; CI's `npm clean-install` fails without it.
 
 **Build variables (dashboard, not in the repo):** the six `VITE_FIREBASE_*` vars
@@ -279,9 +278,6 @@ must be set on the Worker. Vite inlines them at build time and CI has no
 `scripts/check-build-env.mjs` (run by `build:cf`) fails the build instead.
 
 **Key points:**
-- `public/.htaccess` is dead config, retained only so a Bluehost rollback stays a
-  one-step DNS change until that account is cancelled (November 2026). Cloudflare
-  never serves it. Edit `public/_headers` instead.
 - Routing is owned by `wrangler.jsonc`: in CI, wrangler deploys with
   `override_scope`, so a custom domain added only in the dashboard can be
   silently dropped by a later deploy.
