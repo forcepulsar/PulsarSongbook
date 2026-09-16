@@ -44,6 +44,43 @@ describe('legacy app ES5 compatibility', () => {
     ).toThrow();
   });
 
+  // The acorn gate above only sees syntax. `[].includes(x)` or
+  // `Object.assign({}, y)` parse perfectly as ES5 and then throw
+  // "not a function" on Safari 12, which is just as fatal and even harder to
+  // spot. Scan for the post-ES5 library APIs most likely to be reached for.
+  const POST_ES5_APIS = [
+    /\.includes\s*\(/,
+    /\.find\s*\(/,
+    /\.findIndex\s*\(/,
+    /\.flat\s*\(/,
+    /\.flatMap\s*\(/,
+    /\.padStart\s*\(/,
+    /\.padEnd\s*\(/,
+    /\.trimStart\s*\(/,
+    /\.trimEnd\s*\(/,
+    /\.repeat\s*\(/,
+    /\bObject\.assign\b/,
+    /\bObject\.entries\b/,
+    /\bObject\.values\b/,
+    /\bObject\.fromEntries\b/,
+    /\bArray\.from\b/,
+    /\bPromise\b/,
+    /\bSymbol\b/,
+    /\bfetch\s*\(/,
+    /\bnew\s+Map\s*\(/,
+    /\bnew\s+Set\s*\(/,
+  ];
+
+  it.each(jsFiles)('%s uses no post-ES5 runtime APIs', (file) => {
+    const source = readFileSync(join(LEGACY_DIR, file), 'utf8');
+
+    const found = POST_ES5_APIS.filter((pattern) => pattern.test(source)).map(
+      (pattern) => pattern.source
+    );
+
+    expect(found).toEqual([]);
+  });
+
   it('loads the data layer before the app in index.html', () => {
     // app.js reads window.PulsarFirestoreREST during init(), so script order is
     // load-bearing. Classic scripts execute in document order.
