@@ -1,10 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FaGoogle, FaYoutube, FaSpotify } from 'react-icons/fa';
 import { getSettings, updateSettings } from '../db/schema';
 import { getSong } from '../services/firestore';
 import { useAuth } from '../contexts/AuthContext';
-import { parseAndFormatChordPro, applyAllStyles } from '../lib/chordpro/renderUtils';
+import { formatTransposedChordPro, applyAllStyles } from '../lib/chordpro/renderUtils';
 import { FONT, SCROLL } from '../lib/chordpro/constants';
 import { useAutoScroll } from '../hooks/useAutoScroll';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -18,22 +18,54 @@ export default function SongDisplay() {
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
   const [fontSize, setFontSize] = useState(FONT.DEFAULT_SIZE);
   const [showChords, setShowChords] = useState(true);
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [transposition, setTransposition] = useState({ id, semitones: 0 });
+  // Reset during navigation without carrying a previous song's offset forward.
+  if (transposition.id !== id) {
+    setTransposition({ id, semitones: 0 });
+  }
+  const semitones = transposition.id === id ? transposition.semitones : 0;
+  const changeTransposition = (value: number) => {
+    setTransposition({ id, semitones: Math.max(-12, Math.min(12, value)) });
+  };
   const { isApproved } = useAuth();
+  const formatted = useMemo(() => {
+    try {
+      return formatTransposedChordPro(song?.chordProContent ?? '', semitones);
+    } catch (error) {
+      console.error('[SongDisplay] Failed to render ChordPro:', error);
+      return { html: null, unchangedLabels: [] as string[] };
+    }
+  }, [song, semitones]);
+  const unchangedLabels = formatted.unchangedLabels;
+
+  // Reserve the actual toolbar height as controls wrap or review details open.
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      pageRef.current?.style.setProperty('--song-controls-height', `${controls.getBoundingClientRect().height}px`);
+    });
+    observer.observe(controls);
+    return () => observer.disconnect();
+  }, [loading]);
 
   // Load song from Firestore
   useEffect(() => {
     if (!id) return;
 
+    let active = true;
     getSong(id)
-      .then(setSong)
+      .then((result) => { if (active) setSong(result); })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [id]);
 
   // Initialize hooks
@@ -71,22 +103,13 @@ export default function SongDisplay() {
   useEffect(() => {
     if (!song || !song.chordProContent || !contentRef.current) return;
 
-    try {
-      const formattedHtml = parseAndFormatChordPro(song.chordProContent);
-      contentRef.current.innerHTML = formattedHtml;
+    if (formatted.html !== null) {
+      contentRef.current.innerHTML = formatted.html;
       applyAllStyles(contentRef.current, fontSize, showChords);
-    } catch (error) {
-      console.error('[SongDisplay] Failed to render ChordPro:', error);
-      if (contentRef.current) {
-        contentRef.current.innerHTML = `
-          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <p class="text-red-800 dark:text-red-200 font-medium">Failed to parse song content</p>
-            <pre class="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">${song.chordProContent}</pre>
-          </div>
-        `;
-      }
+    } else {
+      contentRef.current.textContent = `Failed to parse song content\n\n${song.chordProContent}`;
     }
-  }, [song, fontSize, showChords]);
+  }, [song, fontSize, showChords, formatted, loading]);
 
   // Font size controls
   const increaseFontSize = () => {
@@ -212,7 +235,7 @@ export default function SongDisplay() {
   const chordifyUrl = `https://chordify.net/search/${encodeURIComponent(chordifyQuery)}`;
 
   return (
-    <div ref={pageRef} className="max-w-6xl mx-auto pb-28">
+    <div ref={pageRef} className="max-w-6xl mx-auto pb-[calc(var(--song-controls-height,240px)+1rem)]">
       {/* Single-row header: back | links | actions */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 mb-4">
         <div className="flex items-center gap-2">
@@ -281,7 +304,7 @@ export default function SongDisplay() {
         style={{
           maxHeight: isFullscreen ? '100vh' : 'calc(100vh - 250px)',
           overflowY: 'auto',
-          paddingBottom: '100px' // Space for fixed controls
+          paddingBottom: 'calc(var(--song-controls-height,240px) + 24px)'
         }}
       >
         <div className={isFullscreen ? 'max-w-7xl mx-auto' : ''}>
@@ -315,9 +338,24 @@ export default function SongDisplay() {
       )}
 
       {/* Fixed Control Bar - Always visible, solid background */}
-      <div data-testid="song-controls" className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-600 shadow-2xl z-50">
+      <div ref={controlsRef} data-testid="song-controls" className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-600 shadow-2xl z-50">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-center gap-3">
+            <div role="group" aria-label="Transpose song" className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+              <span className="font-medium">Transpose</span>
+              <button type="button" aria-label="Transpose down one semitone"
+                disabled={semitones <= -12} onClick={() => changeTransposition(semitones - 1)}
+                className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-30">↓</button>
+              <output aria-live="polite" className="min-w-[2rem] text-center tabular-nums">
+                {semitones > 0 ? '+' : ''}{semitones}<span className="sr-only"> semitones</span>
+              </output>
+              <button type="button" aria-label="Transpose up one semitone"
+                disabled={semitones >= 12} onClick={() => changeTransposition(semitones + 1)}
+                className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-30">↑</button>
+              <button type="button" aria-label="Reset transposition" disabled={semitones === 0}
+                onClick={() => changeTransposition(0)}
+                className="px-2 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-30">Reset</button>
+            </div>
             {/* Playback Controls */}
             <div className="flex items-center gap-2">
               <button
@@ -361,7 +399,7 @@ export default function SongDisplay() {
             <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 hidden md:block"></div>
 
             {/* Display Controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap justify-center items-center gap-2">
               {/* Font Size */}
               <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-2 py-2">
                 <button
@@ -453,6 +491,17 @@ export default function SongDisplay() {
               )}
             </div>
           </div>
+          {semitones !== 0 && (
+            <div className="mt-2 text-center text-xs text-gray-600 dark:text-gray-300">
+              <p>Saved song unchanged. Plain-text chords, tabs and capo notes do not transpose.</p>
+              {unchangedLabels.length > 0 && (
+                <details className="mt-1 text-amber-700 dark:text-amber-300">
+                  <summary className="cursor-pointer">{unchangedLabels.length} unrecognized annotations left unchanged — review</summary>
+                  <p className="max-h-16 overflow-auto">{unchangedLabels.join(' · ')}</p>
+                </details>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

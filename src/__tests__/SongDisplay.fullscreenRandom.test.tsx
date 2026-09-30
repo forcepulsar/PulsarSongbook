@@ -42,10 +42,11 @@ vi.mock('../hooks/useFullscreen', async () => {
   };
 });
 
+const route = vi.hoisted(() => ({ id: 'song-1' }));
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
-  return { ...actual, useNavigate: () => mockNavigate, useParams: () => ({ id: 'song-1' }) };
+  return { ...actual, useNavigate: () => mockNavigate, useParams: () => route };
 });
 
 const currentSong = {
@@ -111,5 +112,61 @@ describe('SongDisplay random button in fullscreen', () => {
     await user.click(controls.getByTitle(RANDOM_TITLE));
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/song/song-2'));
+  });
+});
+
+
+describe('SongDisplay transposition controls', () => {
+  beforeEach(() => {
+    route.id = 'song-1';
+    vi.mocked(firestoreService.getSong).mockResolvedValue(currentSong as Song);
+  });
+
+  it('transposes, retains the offset in fullscreen and restores the original', async () => {
+    const user = userEvent.setup();
+    const { container } = renderSongDisplay();
+    await screen.findByRole('button', { name: 'Transpose up one semitone' });
+    await user.click(screen.getByRole('button', { name: 'Transpose up one semitone' }));
+    expect(container.querySelector('.chord')).toHaveTextContent('C#');
+    expect(screen.getByRole('status')).toHaveTextContent('+1 semitones');
+    await user.click(screen.getByTitle('Fullscreen (F)'));
+    expect(container.querySelector('.chord')).toHaveTextContent('C#');
+    await user.click(screen.getByRole('button', { name: 'Reset transposition' }));
+    expect(container.querySelector('.chord')?.textContent).toBe('C');
+    expect(currentSong.chordProContent).toBe('[C]Amazing grace');
+  });
+
+  it('bounds the controls at an octave in either direction', async () => {
+    const user = userEvent.setup();
+    renderSongDisplay();
+    const up = await screen.findByRole('button', { name: 'Transpose up one semitone' });
+    for (let i = 0; i < 12; i++) await user.click(up);
+    expect(up).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Reset transposition' }));
+    const down = screen.getByRole('button', { name: 'Transpose down one semitone' });
+    for (let i = 0; i < 12; i++) await user.click(down);
+    expect(down).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('-12 semitones');
+  });
+
+  it('resets when navigating to another song and renders the new content', async () => {
+    const user = userEvent.setup();
+    const view = renderSongDisplay();
+    await user.click(await screen.findByRole('button', { name: 'Transpose up one semitone' }));
+    vi.mocked(firestoreService.getSong).mockResolvedValue({ ...currentSong, id: 'song-2', chordProContent: '[G]Next song' } as Song);
+    route.id = 'song-2';
+    view.rerender(<MemoryRouter><SongDisplay /></MemoryRouter>);
+    await waitFor(() => expect(firestoreService.getSong).toHaveBeenCalledWith('song-2'));
+    await waitFor(() => expect([...view.container.querySelectorAll('.lyrics')].map(el => el.textContent).join('')).toBe('Next song'));
+    expect(screen.getByRole('status')).toHaveTextContent('0 semitones');
+    expect(view.container.querySelector('.chord')?.textContent).toBe('G');
+  });
+
+  it('shows annotations that could not be transposed', async () => {
+    vi.mocked(firestoreService.getSong).mockResolvedValue({ ...currentSong, chordProContent: '[C]Hi [Capo 7th fret]' } as Song);
+    const user = userEvent.setup();
+    renderSongDisplay();
+    await user.click(await screen.findByRole('button', { name: 'Transpose up one semitone' }));
+    expect(screen.getByText('1 unrecognized annotations left unchanged — review')).toBeInTheDocument();
   });
 });
