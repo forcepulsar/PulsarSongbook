@@ -35,17 +35,21 @@ export const db = new PulsarSongbookDB();
 
 // Initialize default settings
 export async function initializeDefaultSettings(): Promise<void> {
-  const existingSettings = await db.settings.get(1);
+  // Theme and song controls can request settings concurrently on first load.
+  // Keep the check and insert in one transaction so only one creates the row.
+  await db.transaction('rw', db.settings, async () => {
+    const existingSettings = await db.settings.get(1);
 
-  if (!existingSettings) {
-    await db.settings.add({
-      id: 1,
-      fontSize: 16,
-      scrollSpeed: 0.2,
-      showChords: true,
-      theme: 'light'
-    });
-  }
+    if (!existingSettings) {
+      await db.settings.add({
+        id: 1,
+        fontSize: 16,
+        scrollSpeed: 0.2,
+        showChords: true,
+        theme: 'light'
+      });
+    }
+  });
 }
 
 // Helper to get settings

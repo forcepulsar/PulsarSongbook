@@ -15,6 +15,7 @@ A Progressive Web App (PWA) for managing and displaying song lyrics with chord a
 - **Auto-scroll**: Automatic scrolling with adjustable speed
 - **Font Controls**: Adjustable font size (10-30px)
 - **Chord Toggle**: Show/hide chords
+- **Transpose (modern app)**: Shift displayed chords up/down by one semitone, from −12 to +12, with Reset. Works in fullscreen; resets when switching songs and never changes saved content.
 - **Fullscreen Mode**: Distraction-free viewing
 - **Keyboard Shortcuts**: Quick access to all features
 
@@ -212,6 +213,32 @@ Was [Em]blind but [D]now I [G]see
 **Chord Notation:**
 - `[ChordName]` - Chord positioned above following lyrics
 - Supports all standard chord notations: `C`, `Dm`, `G7`, `Amaj7`, `F#m`, etc.
+
+### Writing songs for transposition
+
+Put each chord in brackets: `[C]Lyrics [G/B]here [Am]next`. Both the root
+and bass note of a slash chord transpose. For instrumental passages, prefer
+`[C] [G] [Am] [F]`. Existing grouped progressions such as `[|C G Am| x2]`
+are also supported, preserving spacing, bar lines and repeat counts.
+
+Use `{comment: Intro}` and `{capo: 2}` for instructions rather than `[Intro]`
+or `[Capo 2nd fret]`. Separate fingerings and playing instructions from chords.
+For example, write `[D/F#]` and put `2x0233` in a comment.
+
+Transposition uses sharps when shifting both up and down (for example, G down
+one semitone becomes F#). Reset restores the original song's spelling.
+Unrecognized bracketed labels stay unchanged as a whole and appear in an
+expandable review list. Plain-text chords outside brackets, tablature, comments,
+key/capo metadata and fret numbers remain unchanged. The semitone count is
+relative to the saved chart, not a detected song key or a capo recommendation.
+No song migration or extra dependency is required. The separate iOS 12 legacy
+viewer does not yet have these controls.
+
+A read-only check on 2026-09-30 found 154 songs: 143 with bracketed notation
+and 11 without it. The new renderer handled all 154 at seven tested offsets
+without errors; 24 songs contained labels requiring review (including normal
+section labels and fingering notes). Some charts also contain plain-text chord
+rows that must be converted to bracketed notation to transpose.
 
 ## Data Format
 

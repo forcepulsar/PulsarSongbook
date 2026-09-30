@@ -1,5 +1,6 @@
 // Render utilities for ChordPro content
-import { ChordProParser, HtmlDivFormatter } from 'chordsheetjs';
+import { ChordLyricsPair, ChordProParser, HtmlDivFormatter } from 'chordsheetjs';
+import { transposeChordLabel } from './transpose';
 import * as StyleUtils from './styleUtils';
 import * as ChordUtils from './chordUtils';
 
@@ -47,14 +48,25 @@ function escapeSharpsInPlainText(chordProContent: string): string {
  * Parse ChordPro content and format to HTML
  */
 export function parseAndFormatChordPro(chordProContent: string): string {
+  return formatTransposedChordPro(chordProContent, 0).html;
+}
+
+export function formatTransposedChordPro(chordProContent: string, semitones: number) {
   const parser = new ChordProParser();
 
   // Protect plain-text lines from '#' being interpreted as comments
   const safeContent = escapeSharpsInPlainText(chordProContent);
 
-  const song = parser.parse(safeContent);
+  const unchangedLabels = new Set<string>();
+  const original = parser.parse(safeContent);
+  const song = semitones === 0 ? original : original.mapItems((item) => {
+    if (!(item instanceof ChordLyricsPair) || item.annotation) return item;
+    const result = transposeChordLabel(item.chords, semitones);
+    if (result.unchanged) unchangedLabels.add(item.chords);
+    return item.set({ chords: result.text, chordObj: null });
+  });
   const formatter = new HtmlDivFormatter();
-  return formatter.format(song);
+  return { html: formatter.format(song), unchangedLabels: [...unchangedLabels] };
 }
 
 /**
