@@ -491,16 +491,11 @@ export default function SongDisplay() {
               )}
             </div>
           </div>
-          {semitones !== 0 && (
-            <div className="mt-2 text-center text-xs text-gray-600 dark:text-gray-300">
-              <p>Saved song unchanged. Plain-text chords, tabs and capo notes do not transpose.</p>
-              {unchangedLabels.length > 0 && (
-                <details className="mt-1 text-amber-700 dark:text-amber-300">
-                  <summary className="cursor-pointer">{unchangedLabels.length} unrecognized annotations left unchanged — review</summary>
-                  <p className="max-h-16 overflow-auto">{unchangedLabels.join(' · ')}</p>
-                </details>
-              )}
-            </div>
+          {semitones !== 0 && unchangedLabels.length > 0 && (
+            <details className="mt-2 text-center text-xs text-amber-700 dark:text-amber-300">
+              <summary className="cursor-pointer">{unchangedLabels.length} unrecognized annotations left unchanged — review</summary>
+              <p className="max-h-16 overflow-auto">{unchangedLabels.join(' · ')}</p>
+            </details>
           )}
         </div>
       </div>
